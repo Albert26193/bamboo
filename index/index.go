@@ -9,13 +9,13 @@ import (
 
 type Indexer interface {
 	// Put content into the index
-	Put(key string, position *content.LogStructIndex) bool
+	Put(key []byte, position *content.LogStructIndex) bool
 
 	// Get returns the index of the file
-	Get(key string) *content.LogStructIndex
+	Get(key []byte) *content.LogStructIndex
 
 	// Delete removes the index of the file
-	Delete(key string) bool
+	Delete(key []byte) bool
 }
 
 type Entry struct {
