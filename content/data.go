@@ -18,8 +18,8 @@ func (d *DataFile) Write(p []byte) error {
 	return nil
 }
 
-func (d *DataFile) ReadLog(offset int64) (*LogStruct, error) {
-	return nil, nil
+func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
+	return nil, 0, nil
 }
 
 func (d *DataFile) Sync() error {

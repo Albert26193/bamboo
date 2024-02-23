@@ -1,9 +1,8 @@
-package btree
+package index
 
 import (
 	"sync"
 	"tiny-bitcask/content"
-	"tiny-bitcask/index"
 
 	"github.com/google/btree"
 )
@@ -21,7 +20,7 @@ func NewBtree() *Btree {
 }
 
 func (b *Btree) Put(key []byte, position *content.LogStructIndex) bool {
-	e := &index.Entry{Key: key, Position: position}
+	e := &Entry{Key: key, Position: position}
 	b.lock.Lock()
 	b.tree.ReplaceOrInsert(e)
 	b.lock.Unlock()
@@ -30,16 +29,16 @@ func (b *Btree) Put(key []byte, position *content.LogStructIndex) bool {
 
 // google btree read is safe, no need to lock
 func (b *Btree) Get(key []byte) *content.LogStructIndex {
-	e := &index.Entry{Key: key}
+	e := &Entry{Key: key}
 	item := b.tree.Get(e)
 	if item == nil {
 		return nil
 	}
-	return item.(*index.Entry).Position
+	return item.(*Entry).Position
 }
 
 func (b *Btree) Delete(key []byte) bool {
-	e := &index.Entry{Key: key}
+	e := &Entry{Key: key}
 	b.lock.Lock()
 	removeItem := b.tree.Delete(e)
 	b.lock.Unlock()

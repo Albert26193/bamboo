@@ -1,6 +1,12 @@
 package db
 
 import (
+	"errors"
+	"io"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"tiny-bitcask/content"
 	"tiny-bitcask/index"
@@ -12,6 +18,52 @@ type DB struct {
 	activeBlock   *content.DataFile
 	inactiveBlock map[uint32]*content.DataFile
 	index         index.Indexer
+	fileList      []int
+}
+
+func CreateDB(options Options) (*DB, error) {
+	// validate options
+	if err := validateOptions(options); err != nil {
+		return nil, err
+	}
+
+	// judge if the data directory exists
+	if _, err := os.Stat(options.DataDir); os.IsNotExist(err) {
+		if err := os.Mkdir(options.DataDir, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+
+	db := &DB{
+		options:       options,
+		muLock:        new(sync.RWMutex),
+		inactiveBlock: make(map[uint32]*content.DataFile),
+		index:         index.NewIndexer(options.IndexType),
+	}
+
+	// load data from disk
+	if err := db.loadFromDisk(); err != nil {
+		return nil, err
+	}
+
+	// update memory index
+	if err := db.updateMemoryIndex(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+func validateOptions(options Options) error {
+	if options.DataDir == "" {
+		return errors.New("DataDir is empty")
+	}
+
+	if options.DataSize <= 0 {
+		return errors.New("DataSize is not positive")
+	}
+
+	return nil
 }
 
 func (db *DB) setActiveFile() error {
@@ -63,6 +115,7 @@ func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error)
 	if err := db.activeBlock.Write(encodeLog); err != nil {
 		return nil, err
 	}
+
 	// if sync data
 	if db.options.SyncData {
 		if err := db.activeBlock.Sync(); err != nil {
@@ -131,7 +184,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	// get data
-	log, err := dataFile.ReadLog(pos.Offset)
+	log, _, err := dataFile.ReadLog(pos.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -141,4 +194,123 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	return log.Value, nil
+}
+
+func (db *DB) Delete(key []byte) error {
+	if len(key) == 0 {
+		return ErrEmptyKey
+	}
+
+	if pos := db.index.Get(key); pos != nil {
+		return nil
+	}
+
+	// add tag to log
+	log := &content.LogStruct{
+		Key:  key,
+		Type: content.LogStructDeleted,
+	}
+
+	// add log to active block
+	_, err := db.appendLog(log)
+	if err != nil {
+		return err
+	}
+
+	//remove key
+	if succeed := db.index.Delete(key); !succeed {
+		return ErrIndexUpdateFailed
+	}
+
+	return nil
+}
+
+func (db *DB) loadFromDisk() error {
+	dir, err := os.ReadDir(db.options.DataDir)
+	if err != nil {
+		return err
+	}
+
+	var fileList []int
+
+	for _, dir := range dir {
+		if strings.HasSuffix(dir.Name(), ".btdata") {
+			fileNames := strings.Split(dir.Name(), ".")
+			fileIndex, err := strconv.Atoi(fileNames[0])
+
+			if err != nil {
+				return ErrDataDirectory
+			}
+			fileList = append(fileList, fileIndex)
+		}
+	}
+
+	// sort fileList
+	sort.Ints(fileList)
+	db.fileList = fileList
+
+	// load index
+	for i, fileIndex := range fileList {
+		dataFile, err := content.OpenFile(db.options.DataDir, uint32(fileIndex))
+		if err != nil {
+			return err
+		}
+
+		if i == len(fileList)-1 {
+			db.activeBlock = dataFile
+		} else {
+			db.inactiveBlock[uint32(fileIndex)] = dataFile
+		}
+	}
+	return nil
+}
+
+func (db *DB) updateMemoryIndex() error {
+	// empty db
+	if len(db.fileList) == 0 {
+		return nil
+	}
+
+	// visit each file
+	for i, fileIndex := range db.fileList {
+		var curIndex = uint32(fileIndex)
+		var curDataFile *content.DataFile
+		if curIndex == db.activeBlock.FileIndex {
+			curDataFile = db.activeBlock
+		} else {
+			curDataFile = db.inactiveBlock[curIndex]
+		}
+
+		// read log
+		offset := int64(0)
+		for {
+			log, size, err := curDataFile.ReadLog(offset)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return err
+			}
+
+			// update memory index
+			logPos := &content.LogStructIndex{
+				FileIndex: curIndex,
+				Offset:    offset,
+			}
+
+			if log.Type == content.LogStructDeleted {
+				db.index.Delete(log.Key)
+			} else {
+				db.index.Put(log.Key, logPos)
+			}
+
+			offset += size
+		}
+
+		if i == len(db.fileList)-1 {
+			db.activeBlock.WritePos = offset
+		}
+	}
+
+	return nil
 }
