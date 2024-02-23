@@ -1,4 +1,4 @@
-package io
+package diskIO
 
 import "os"
 
@@ -6,7 +6,7 @@ type SystemIO struct {
 	fd *os.File
 }
 
-func NewIOManager(fileName string) (*SystemIO, error) {
+func NewFileIOManager(fileName string) (*SystemIO, error) {
 	fd, err := os.OpenFile(
 		fileName,
 		os.O_RDWR|os.O_CREATE|os.O_APPEND,
@@ -33,4 +33,12 @@ func (s *SystemIO) Sync() error {
 
 func (s *SystemIO) Close() error {
 	return s.fd.Close()
+}
+
+func (s *SystemIO) Size() (int64, error) {
+	fi, err := s.fd.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return fi.Size(), nil
 }

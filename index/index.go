@@ -10,8 +10,8 @@ import (
 type IndexType = int8
 
 const (
-	BtreeIndex IndexType = iota
-	ART
+	BtreeIndex IndexType = 0
+	ART        IndexType = 1
 )
 
 type Indexer interface {

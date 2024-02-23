@@ -1,11 +1,10 @@
 package content
 
-type LogType byte
-
-const (
-	LogStructCnt LogType = iota
-	LogStructDeleted
+import (
+	"encoding/binary"
+	"hash/crc32"
 )
+
 
 // Log-Like Append-Only File
 type LogStruct struct {
@@ -20,7 +19,74 @@ type LogStructIndex struct {
 	Offset    int64
 }
 
-// Encode encodes the log struct into a byte slice
+// Header
+type logHeader struct {
+	KeySize   uint32
+	ValueSize uint32
+	LogType   LogType
+	crc       uint32
+}
+
+//	+--------+-------+-----------+------------+-----------+------------+
+//	| crc    |  type |  key size | value size |    key    |    value   |
+//	+--------+-------+-----------+------------+-----------+------------+
+//	 4 byte    1 byte  maxLen:5    maxLen:5     elastic     elastic
+//
+// return byte slice and length
 func Encoder(log *LogStruct) (encodeData []byte, encodeLen int64) {
-	return nil, 0
+	headBuffer := make([]byte, MaxLogHeaderSize)
+
+	headBuffer[4] = log.Type
+	var index = 5
+
+	index += binary.PutVarint(headBuffer[index:], int64(len(log.Key)))
+	index += binary.PutVarint(headBuffer[index:], int64(len(log.Value)))
+
+	var dataLen = index + len(log.Key) + len(log.Value)
+	encodeBytes := make([]byte, dataLen)
+
+	copy(encodeBytes[:index], headBuffer)
+	copy(encodeBytes[index:], log.Key)
+	copy(encodeBytes[index+len(log.Key):], log.Value)
+
+	crc := crc32.ChecksumIEEE(encodeBytes[4:])
+	binary.LittleEndian.PutUint32(encodeBytes[:4], crc)
+
+	return encodeBytes, int64(dataLen)
+}
+
+// Decode headers
+func DecodeHeader(data []byte) (*logHeader, int64) {
+	if len(data) <= 4 {
+		return nil, 0
+	}
+
+	header := &logHeader{
+		crc:     binary.LittleEndian.Uint32(data[:4]),
+		LogType: data[4],
+	}
+
+	var index = 5
+	keySize, n := binary.Varint(data[index:])
+	header.KeySize = uint32(keySize)
+	index += n
+
+	valueSize, n := binary.Varint(data[index:])
+	header.ValueSize = uint32(valueSize)
+	index += n
+
+	return header, int64(index)
+}
+
+// crc
+func getDataCRC(l *LogStruct, head []byte) uint32 {
+	if l == nil {
+		return 0
+	}
+
+	crc := crc32.ChecksumIEEE(head)
+	crc = crc32.Update(crc, crc32.IEEETable, l.Key)
+	crc = crc32.Update(crc, crc32.IEEETable, l.Value)
+
+	return crc
 }

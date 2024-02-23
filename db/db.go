@@ -140,7 +140,7 @@ func (db *DB) Put(key []byte, value []byte) error {
 	logStruct := &content.LogStruct{
 		Key:   key,
 		Value: value,
-		Type:  content.LogStructCnt,
+		Type:  content.LogNormal,
 	}
 
 	// append log to active block

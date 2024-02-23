@@ -10,6 +10,6 @@ type Options struct {
 type IndexType = int8
 
 const (
-	BTree IndexType = iota + 1
-	ART
+	BTree IndexType = 1
+	ART IndexType = 2
 )

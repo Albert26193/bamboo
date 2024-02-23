@@ -1,27 +1,111 @@
 package content
 
 import (
-	"tiny-bitcask/io"
+	"errors"
+	"fmt"
+	"hash/crc32"
+	"io"
+	"path/filepath"
+	"tiny-bitcask/diskIO"
 )
 
 type DataFile struct {
 	FileIndex uint32
-	IOManager io.IOManager
+	IOManager diskIO.IOManager
 	WritePos  int64
 }
 
-func OpenFile(fileName string, fileIndex uint32) (*DataFile, error) {
-	return nil, nil
+func OpenFile(path string, fileIndex uint32) (*DataFile, error) {
+	name := fmt.Sprintf("%09d", fileIndex) + suffix
+	fileName := filepath.Join(path, name)
+
+	fio, err := diskIO.NewIOManager(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataFile{
+		FileIndex: fileIndex,
+		IOManager: fio,
+		WritePos:  0,
+	}, nil
 }
 
 func (d *DataFile) Write(p []byte) error {
+	n, err := d.IOManager.Write(p)
+	if err != nil {
+		return err
+	}
+
+	d.WritePos += int64(n)
 	return nil
 }
 
+func (d *DataFile) ReadBytes(offset int64, readLen int64) ([]byte, error) {
+	toRead := make([]byte, readLen)
+	_, err := d.IOManager.Read(toRead, offset)
+	return toRead, err
+}
+
 func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
-	return nil, 0, nil
+	fileSize, err := d.IOManager.Size()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	headBytes := MaxLogHeaderSize
+	if offset+MaxLogHeaderSize > fileSize {
+		headBytes = fileSize - offset
+	}
+
+	// read log header
+	headBuffer, err := d.ReadBytes(offset, headBytes)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(headBuffer) == 0 {
+		fmt.Println("headBuffer is empty")
+		return nil, 0, io.EOF
+	}
+
+	headInfo, headSize := DecodeHeader(headBuffer)
+	error1 := errors.New("error1")
+	// EOF
+	if headInfo == nil {
+		return nil, 0, error1
+	}
+	if headInfo.crc == 0 && headInfo.KeySize == 0 && headInfo.ValueSize == 0 {
+		return nil, 0, io.EOF
+	}
+
+	// key and value
+	keySize, valueSize := int64(headInfo.KeySize), int64(headInfo.ValueSize)
+
+	logData := &LogStruct{
+		Type: headInfo.LogType,
+	}
+	if keySize > 0 || valueSize > 0 {
+		kvData, err := d.ReadBytes(offset+headSize, keySize+valueSize)
+		if err != nil {
+			return nil, 0, err
+		}
+		logData.Key = kvData[:keySize]
+		logData.Value = kvData[keySize:]
+	}
+
+	var totalSize = headSize + keySize + valueSize
+	crc := getDataCRC(logData, headBuffer[crc32.Size:headSize])
+	if crc != headInfo.crc {
+		return nil, 0, ErrCRCNotMatch
+	}
+
+	return logData, totalSize, nil
 }
 
 func (d *DataFile) Sync() error {
+	return nil
+}
+
+func (d *DataFile) Close() error {
 	return nil
 }
