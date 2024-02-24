@@ -1,7 +1,6 @@
 package content
 
 import (
-	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -63,16 +62,11 @@ func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	if len(headBuffer) == 0 {
-		fmt.Println("headBuffer is empty")
-		return nil, 0, io.EOF
-	}
 
 	headInfo, headSize := DecodeHeader(headBuffer)
-	error1 := errors.New("error1")
 	// EOF
 	if headInfo == nil {
-		return nil, 0, error1
+		return nil, 0, io.EOF
 	}
 	if headInfo.crc == 0 && headInfo.KeySize == 0 && headInfo.ValueSize == 0 {
 		return nil, 0, io.EOF

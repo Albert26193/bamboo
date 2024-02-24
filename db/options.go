@@ -1,5 +1,7 @@
 package db
 
+import "os"
+
 type Options struct {
 	DataDir   string
 	DataSize  uint32
@@ -10,6 +12,13 @@ type Options struct {
 type IndexType = int8
 
 const (
-	BTree IndexType = 1
-	ART IndexType = 2
+	BTree IndexType = 0
+	ART   IndexType = 1
 )
+
+var DefaultOptions = Options{
+	DataDir:   os.TempDir(),
+	DataSize:  256 * 1024 * 1024,
+	SyncData:  false,
+	IndexType: BTree,
+}

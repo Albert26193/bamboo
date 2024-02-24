@@ -5,7 +5,6 @@ import (
 	"hash/crc32"
 )
 
-
 // Log-Like Append-Only File
 type LogStruct struct {
 	Key   []byte

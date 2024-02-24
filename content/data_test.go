@@ -7,12 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func destroyFile(name string) {
-	if err := os.RemoveAll(name); err != nil {
-		panic(err)
-	}
-}
-
 func TestOpenDataFile(t *testing.T) {
 	dataFile1, err := OpenFile(os.TempDir(), 0)
 	assert.Nil(t, err)
