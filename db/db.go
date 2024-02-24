@@ -168,32 +168,10 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	// get index
 	pos := db.index.Get(key)
 	if pos == nil {
-		return nil, ErrDataFileNotFound
+		return nil, ErrKeyNotFound
 	}
 
-	// find log
-	var dataFile *content.DataFile
-	if db.activeBlock.FileIndex == pos.FileIndex {
-		dataFile = db.activeBlock
-	} else {
-		dataFile = db.inactiveBlock[pos.FileIndex]
-	}
-
-	if dataFile == nil {
-		return nil, ErrDataFileNotFound
-	}
-
-	// get data
-	log, _, err := dataFile.ReadLog(pos.Offset)
-	if err != nil {
-		return nil, err
-	}
-
-	if log.Type == content.LogStructDeleted {
-		return nil, ErrDataFileNotFound
-	}
-
-	return log.Value, nil
+	return db.GetValueFormPos(pos)
 }
 
 func (db *DB) Delete(key []byte) error {
@@ -201,14 +179,14 @@ func (db *DB) Delete(key []byte) error {
 		return ErrEmptyKey
 	}
 
-	if pos := db.index.Get(key); pos != nil {
+	if pos := db.index.Get(key); pos == nil {
 		return nil
 	}
 
 	// add tag to log
 	log := &content.LogStruct{
 		Key:  key,
-		Type: content.LogStructDeleted,
+		Type: content.LogDeleted,
 	}
 
 	// add log to active block
@@ -298,7 +276,7 @@ func (db *DB) updateMemoryIndex() error {
 				Offset:    offset,
 			}
 
-			if log.Type == content.LogStructDeleted {
+			if log.Type == content.LogDeleted {
 				db.index.Delete(log.Key)
 			} else {
 				db.index.Put(log.Key, logPos)
@@ -313,4 +291,108 @@ func (db *DB) updateMemoryIndex() error {
 	}
 
 	return nil
+}
+
+func (db *DB) GetValueFormPos(logPos *content.LogStructIndex) ([]byte, error) {
+	var fileToFind *content.DataFile
+
+	if db.activeBlock.FileIndex == logPos.FileIndex {
+		fileToFind = db.activeBlock
+	} else {
+		fileToFind = db.inactiveBlock[logPos.FileIndex]
+	}
+
+	if fileToFind == nil {
+		return nil, ErrDataFileNotFound
+	}
+
+	// get data from offset
+	log, _, err := fileToFind.ReadLog(logPos.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	if log.Type == content.LogDeleted {
+		return nil, ErrKeyNotFound
+	}
+
+	return log.Value, nil
+}
+
+func (db *DB) Sync() error {
+	if db.activeBlock == nil {
+		return nil
+	}
+	db.muLock.Lock()
+	defer db.muLock.Unlock()
+	return db.activeBlock.Sync()
+}
+
+func (db *DB) Close() error {
+	if db.activeBlock == nil {
+		return nil
+	}
+	db.muLock.Lock()
+	defer db.muLock.Unlock()
+
+	// close active block
+	if err := db.activeBlock.Close(); err != nil {
+		return err
+	}
+
+	// close inactive block
+	for _, file := range db.inactiveBlock {
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (db *DB) ListKeys() [][]byte {
+	Iterator := db.index.Iterator(false)
+	keys := make([][]byte, db.index.Size())
+
+	var index int
+
+	Iterator.Rewind()
+	for Iterator.Valid() {
+		keys[index] = Iterator.Key()
+		index++
+		Iterator.Next()
+	}
+
+	return keys
+}
+
+func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
+	db.muLock.RLock()
+	defer db.muLock.RUnlock()
+
+	Iterator := db.index.Iterator(false)
+	for Iterator.Rewind(); Iterator.Valid(); Iterator.Next() {
+		value, err := db.GetValueFormPos(Iterator.Value())
+		if err != nil {
+			return err
+		}
+
+		key := Iterator.Key()
+		if !fn(key, value) {
+			break
+		}
+	}
+	return nil
+}
+
+// destroyDB
+func destroyDB(db *DB) {
+	if db != nil {
+		if db.activeBlock != nil {
+			_ = db.Close()
+		}
+		err := os.RemoveAll(db.options.DataDir)
+		if err != nil {
+			panic(err)
+		}
+	}
 }

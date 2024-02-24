@@ -9,6 +9,11 @@ type Options struct {
 	IndexType IndexType
 }
 
+type IteratorOptions struct {
+	Prefix  []byte
+	Reverse bool
+}
+
 type IndexType = int8
 
 const (
@@ -21,4 +26,9 @@ var DefaultOptions = Options{
 	DataSize:  256 * 1024 * 1024,
 	SyncData:  false,
 	IndexType: BTree,
+}
+
+var DefaultIteratorOptions = IteratorOptions{
+	Prefix:  nil,
+	Reverse: false,
 }

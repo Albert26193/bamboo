@@ -95,7 +95,7 @@ func TestReadLogRecord(t *testing.T) {
 	rec3 := &LogStruct{
 		Key:   []byte("1"),
 		Value: []byte(""),
-		Type:  LogStructDeleted,
+		Type:  LogDeleted,
 	}
 	res3, size3 := Encoder(rec3)
 	err = dataFile.Write(res3)

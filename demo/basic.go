@@ -7,7 +7,7 @@ import (
 
 func main() {
 	opts := bitcask.DefaultOptions
-	opts.DataDir = "/tmp/tiny-bitcask-go-x1"
+	opts.DataDir = "/tmp/tiny-bitcask-demo"
 	db, err := bitcask.CreateDB(opts)
 	if err != nil {
 		panic(err)

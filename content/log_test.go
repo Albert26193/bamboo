@@ -17,7 +17,7 @@ func TestEncodeRecord(t *testing.T) {
 	assert.NotNil(t, res1)
 	assert.Greater(t, n1, int64(5))
 
-	// value 为空的情况
+	// test with empty value
 	rec2 := &LogStruct{
 		Key:  []byte("name"),
 		Type: LogNormal,
@@ -26,11 +26,11 @@ func TestEncodeRecord(t *testing.T) {
 	assert.NotNil(t, res2)
 	assert.Greater(t, n2, int64(5))
 
-	// 对 Deleted 情况的测试
+	// test with deleted log
 	rec3 := &LogStruct{
 		Key:   []byte("name"),
 		Value: []byte("bitcask-go"),
-		Type:  LogNormal,
+		Type:  LogDeleted,
 	}
 	res3, n3 := Encoder(rec3)
 	assert.NotNil(t, res3)
@@ -61,7 +61,7 @@ func TestDecodeHeader(t *testing.T) {
 	assert.NotNil(t, h3)
 	assert.Equal(t, int64(7), size3)
 	assert.Equal(t, uint32(290887979), h3.crc)
-	assert.Equal(t, LogStructDeleted, h3.LogType)
+	assert.Equal(t, LogDeleted, h3.LogType)
 	assert.Equal(t, uint32(4), h3.KeySize)
 	assert.Equal(t, uint32(10), h3.ValueSize)
 }
@@ -87,7 +87,7 @@ func TestGetCRC(t *testing.T) {
 	rec3 := &LogStruct{
 		Key:   []byte("name"),
 		Value: []byte("bitcask-go"),
-		Type:  LogNormal,
+		Type:  LogDeleted,
 	}
 	headerBuf3 := []byte{43, 153, 86, 17, 1, 8, 20}
 	crc3 := getDataCRC(rec3, headerBuf3[crc32.Size:])
