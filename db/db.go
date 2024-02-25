@@ -19,6 +19,7 @@ type DB struct {
 	inactiveBlock map[uint32]*content.DataFile
 	index         index.Indexer
 	fileList      []int
+	atomicSeq     uint64
 }
 
 func CreateDB(options Options) (*DB, error) {
@@ -82,9 +83,6 @@ func (db *DB) setActiveFile() error {
 }
 
 func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error) {
-	db.muLock.Lock()
-	defer db.muLock.Unlock()
-
 	// if empty
 	if db.activeBlock == nil {
 		if err := db.setActiveFile(); err != nil {
@@ -132,19 +130,25 @@ func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error)
 	return logIndex, nil
 }
 
+func (db *DB) lockedAppendLog(log *content.LogStruct) (*content.LogStructIndex, error) {
+	db.muLock.Lock()
+	defer db.muLock.Unlock()
+	return db.appendLog(log)
+}
+
 func (db *DB) Put(key []byte, value []byte) error {
 	if len(key) == 0 {
 		return ErrEmptyKey
 	}
 
 	logStruct := &content.LogStruct{
-		Key:   key,
+		Key:   encodeLogKeyWithSeqNo(key, initialTransactionSeq),
 		Value: value,
 		Type:  content.LogNormal,
 	}
 
 	// append log to active block
-	pos, err := db.appendLog(logStruct)
+	pos, err := db.lockedAppendLog(logStruct)
 	if err != nil {
 		return err
 	}
@@ -166,12 +170,12 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	// get index
-	pos := db.index.Get(key)
-	if pos == nil {
+	logStruct := db.index.Get(key)
+	if logStruct == nil {
 		return nil, ErrKeyNotFound
 	}
 
-	return db.GetValueFormPos(pos)
+	return db.GetValueFormLog(logStruct)
 }
 
 func (db *DB) Delete(key []byte) error {
@@ -185,12 +189,12 @@ func (db *DB) Delete(key []byte) error {
 
 	// add tag to log
 	log := &content.LogStruct{
-		Key:  key,
+		Key:  encodeLogKeyWithSeqNo(key, initialTransactionSeq),
 		Type: content.LogDeleted,
 	}
 
 	// add log to active block
-	_, err := db.appendLog(log)
+	_, err := db.lockedAppendLog(log)
 	if err != nil {
 		return err
 	}
@@ -249,6 +253,22 @@ func (db *DB) updateMemoryIndex() error {
 		return nil
 	}
 
+	transactionMap := make(map[uint64][]*content.TransActionLog)
+	var currentTransactionSeq = initialTransactionSeq
+
+	var updateIndexFromType = func(key []byte, logType content.LogType, logPos *content.LogStructIndex) {
+		succeed := false
+		if logType == content.LogDeleted {
+			succeed = db.index.Delete(key)
+		} else {
+			succeed = db.index.Put(key, logPos)
+		}
+
+		if !succeed {
+			panic("update index failed")
+		}
+	}
+
 	// visit each file
 	for i, fileIndex := range db.fileList {
 		var curIndex = uint32(fileIndex)
@@ -276,12 +296,31 @@ func (db *DB) updateMemoryIndex() error {
 				Offset:    offset,
 			}
 
-			if log.Type == content.LogDeleted {
-				db.index.Delete(log.Key)
+			// get transaction seq
+			dataKey, seqNo := parseLogKey(log.Key)
+			// no transaction
+			if seqNo == initialTransactionSeq {
+				updateIndexFromType(dataKey, log.Type, logPos)
 			} else {
-				db.index.Put(log.Key, logPos)
+				// if finish the transaction
+				if log.Type == content.LogAtomicFinish {
+					for _, transLog := range transactionMap[seqNo] {
+						updateIndexFromType(transLog.Log.Key, transLog.Log.Type, transLog.Position)
+					}
+					delete(transactionMap, seqNo)
+				} else {
+					log.Key = dataKey
+					transactionMap[seqNo] = append(transactionMap[seqNo], &content.TransActionLog{
+						Log:      log,
+						Position: logPos,
+					})
+				}
 			}
 
+			// update transaction seq
+			if seqNo > currentTransactionSeq {
+				currentTransactionSeq = seqNo
+			}
 			offset += size
 		}
 
@@ -290,10 +329,11 @@ func (db *DB) updateMemoryIndex() error {
 		}
 	}
 
+	db.atomicSeq = currentTransactionSeq
 	return nil
 }
 
-func (db *DB) GetValueFormPos(logPos *content.LogStructIndex) ([]byte, error) {
+func (db *DB) GetValueFormLog(logPos *content.LogStructIndex) ([]byte, error) {
 	var fileToFind *content.DataFile
 
 	if db.activeBlock.FileIndex == logPos.FileIndex {
@@ -371,7 +411,7 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 
 	Iterator := db.index.Iterator(false)
 	for Iterator.Rewind(); Iterator.Valid(); Iterator.Next() {
-		value, err := db.GetValueFormPos(Iterator.Value())
+		value, err := db.GetValueFormLog(Iterator.Value())
 		if err != nil {
 			return err
 		}

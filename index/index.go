@@ -68,5 +68,4 @@ type Iterator interface {
 
 	// Close
 	Close()
-
 }

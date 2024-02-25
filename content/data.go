@@ -97,9 +97,9 @@ func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
 }
 
 func (d *DataFile) Sync() error {
-	return nil
+	return d.IOManager.Sync()
 }
 
 func (d *DataFile) Close() error {
-	return nil
+	return d.IOManager.Close()
 }

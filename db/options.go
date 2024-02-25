@@ -32,3 +32,13 @@ var DefaultIteratorOptions = IteratorOptions{
 	Prefix:  nil,
 	Reverse: false,
 }
+
+type WriteOptions struct {
+	MaxWriteCount uint
+	SyncCommit    bool
+}
+
+var DefaultWriteOptions = WriteOptions{
+	MaxWriteCount: 10000,
+	SyncCommit:    false,
+}

@@ -265,7 +265,7 @@ func TestDBListKeys(t *testing.T) {
 	}
 }
 
-func TestDBFold(t *testing.T) {
+func TestFold(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
 	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-fold-", strconv.FormatInt(currentTime, 10)}, ""))
@@ -293,7 +293,7 @@ func TestDBFold(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestDBClose(t *testing.T) {
+func TestClose(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
 	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-close-", strconv.FormatInt(currentTime, 10)}, ""))
@@ -308,7 +308,7 @@ func TestDBClose(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestDB_Sync(t *testing.T) {
+func TestSync(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
 	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-sync-", strconv.FormatInt(currentTime, 10)}, ""))

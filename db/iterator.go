@@ -70,7 +70,7 @@ func (i *Iterator) Value() ([]byte, error) {
 	i.db.muLock.RLock()
 
 	defer i.db.muLock.RUnlock()
-	return i.db.GetValueFormPos(logPos)
+	return i.db.GetValueFormLog(logPos)
 }
 
 // Close iterator, release resources.
