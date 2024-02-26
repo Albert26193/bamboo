@@ -13,6 +13,9 @@ const (
 	LogNormal        LogType = 0
 	LogDeleted       LogType = 1
 	LogAtomicFinish  LogType = 2
+
+	HintFileTag      = "bitcask-hint"
+	MergeFinishedTag = "merge.finished"
 )
 
 var ErrCRCNotMatch = errors.New("crc not match")

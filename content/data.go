@@ -14,10 +14,11 @@ type DataFile struct {
 	WritePos  int64
 }
 
-func OpenFile(path string, fileIndex uint32) (*DataFile, error) {
-	name := fmt.Sprintf("%09d", fileIndex) + suffix
-	fileName := filepath.Join(path, name)
+func GetBlockName(dir string, fileId uint32) string {
+	return filepath.Join(dir, fmt.Sprintf("%09d", fileId)+suffix)
+}
 
+func GenerateNewBlock(fileName string, fileIndex uint32) (*DataFile, error) {
 	fio, err := diskIO.NewIOManager(fileName)
 	if err != nil {
 		return nil, err
@@ -28,6 +29,11 @@ func OpenFile(path string, fileIndex uint32) (*DataFile, error) {
 		IOManager: fio,
 		WritePos:  0,
 	}, nil
+}
+
+func OpenBlock(path string, fileIndex uint32) (*DataFile, error) {
+	name := GetBlockName(path, fileIndex)
+	return GenerateNewBlock(name, fileIndex)
 }
 
 func (d *DataFile) Write(p []byte) error {

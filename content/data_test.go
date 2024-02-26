@@ -8,21 +8,21 @@ import (
 )
 
 func TestOpenDataFile(t *testing.T) {
-	dataFile1, err := OpenFile(os.TempDir(), 0)
+	dataFile1, err := OpenBlock(os.TempDir(), 0)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)
 
-	dataFile2, err := OpenFile(os.TempDir(), 123)
+	dataFile2, err := OpenBlock(os.TempDir(), 123)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile2)
 
-	dataFile3, err := OpenFile(os.TempDir(), 65535*65535)
+	dataFile3, err := OpenBlock(os.TempDir(), 65535*65535)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile3)
 }
 
 func TestDataWrite(t *testing.T) {
-	dataFile, err := OpenFile(os.TempDir(), 0)
+	dataFile, err := OpenBlock(os.TempDir(), 0)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -37,7 +37,7 @@ func TestDataWrite(t *testing.T) {
 }
 
 func TestDataClose(t *testing.T) {
-	dataFile, err := OpenFile(os.TempDir(), 123)
+	dataFile, err := OpenBlock(os.TempDir(), 123)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -49,7 +49,7 @@ func TestDataClose(t *testing.T) {
 }
 
 func TestSync(t *testing.T) {
-	dataFile, err := OpenFile(os.TempDir(), 456)
+	dataFile, err := OpenBlock(os.TempDir(), 456)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -61,7 +61,7 @@ func TestSync(t *testing.T) {
 }
 
 func TestReadLogRecord(t *testing.T) {
-	dataFile, err := OpenFile(os.TempDir(), 6666)
+	dataFile, err := OpenBlock(os.TempDir(), 6666)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 

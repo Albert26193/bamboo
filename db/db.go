@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,13 +15,14 @@ import (
 )
 
 type DB struct {
-	options       Options
-	muLock        *sync.RWMutex
-	activeBlock   *content.DataFile
-	inactiveBlock map[uint32]*content.DataFile
-	index         index.Indexer
-	fileList      []int
-	atomicSeq     uint64
+	options        Options
+	muLock         *sync.RWMutex
+	activeBlock    *content.DataFile
+	inactiveBlock  map[uint32]*content.DataFile
+	index          index.Indexer
+	fileList       []int
+	atomicSeq      uint64
+	inMergeProcess bool
 }
 
 func CreateDB(options Options) (*DB, error) {
@@ -42,8 +45,18 @@ func CreateDB(options Options) (*DB, error) {
 		index:         index.NewIndexer(options.IndexType),
 	}
 
+	// first, check if has merge dir
+	if err := db.getMergeBlocks(); err != nil {
+		return nil, err
+	}
+
 	// load data from disk
 	if err := db.loadFromDisk(); err != nil {
+		return nil, err
+	}
+
+	// load from hint
+	if err := db.getIndexFromHint(); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +86,7 @@ func (db *DB) setActiveFile() error {
 		initialFileIndex = db.activeBlock.FileIndex + 1
 	}
 
-	newFile, err := content.OpenFile(db.options.DataDir, initialFileIndex)
+	newFile, err := content.OpenBlock(db.options.DataDir, initialFileIndex)
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +246,7 @@ func (db *DB) loadFromDisk() error {
 
 	// load index
 	for i, fileIndex := range fileList {
-		dataFile, err := content.OpenFile(db.options.DataDir, uint32(fileIndex))
+		dataFile, err := content.OpenBlock(db.options.DataDir, uint32(fileIndex))
 		if err != nil {
 			return err
 		}
@@ -251,6 +264,18 @@ func (db *DB) updateMemoryIndex() error {
 	// empty db
 	if len(db.fileList) == 0 {
 		return nil
+	}
+
+	hasMerged, exclusiveMergeId := false, uint32(0)
+	mergeFinishedName := filepath.Join(db.options.DataDir, content.MergeFinishedTag)
+
+	if _, err := os.Stat(mergeFinishedName); err == nil {
+		finId, err := db.getExclusiveMergeBlockId(db.options.DataDir)
+		if err != nil {
+			return err
+		}
+		hasMerged = true
+		exclusiveMergeId = finId
 	}
 
 	transactionMap := make(map[uint64][]*content.TransActionLog)
@@ -272,6 +297,12 @@ func (db *DB) updateMemoryIndex() error {
 	// visit each file
 	for i, fileIndex := range db.fileList {
 		var curIndex = uint32(fileIndex)
+
+		// if has merged and not reach the exclusive merge id
+		if hasMerged && curIndex < exclusiveMergeId {
+			continue
+		}
+
 		var curDataFile *content.DataFile
 		if curIndex == db.activeBlock.FileIndex {
 			curDataFile = db.activeBlock
@@ -421,6 +452,71 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 			break
 		}
 	}
+	return nil
+}
+
+func (db *DB) getMergeDir() string {
+	dir := path.Dir(path.Clean(db.options.DataDir))
+	base := path.Base(db.options.DataDir)
+	return filepath.Join(dir, base+mergeDirPath)
+}
+
+func (db *DB) getMergeBlocks() error {
+	mergeDir := db.getMergeDir()
+
+	// check if merge dir exists
+	if _, err := os.Stat(mergeDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	defer func() {
+		_ = os.RemoveAll(mergeDir)
+	}()
+
+	childDirs, err := os.ReadDir(mergeDir)
+	if err != nil {
+		return err
+	}
+
+	// check if merge has finished
+	var isMergeFinished = false
+	var mergeFileBlocks []string
+	for _, dir := range childDirs {
+		if dir.Name() == content.MergeFinishedTag {
+			isMergeFinished = true
+		}
+		mergeFileBlocks = append(mergeFileBlocks, dir.Name())
+	}
+
+	// if not finished
+	if !isMergeFinished {
+		return nil
+	}
+
+	exclusiveBlockId, err := db.getExclusiveMergeBlockId(mergeDir)
+	if err != nil {
+		return err
+	}
+
+	// remove inactive files
+	for fileId := uint32(0); fileId < exclusiveBlockId; fileId++ {
+		fileName := content.GetBlockName(db.options.DataDir, fileId)
+		if _, err := os.Stat(fileName); err == nil {
+			if err := os.Remove(fileName); err != nil {
+				return err
+			}
+		}
+	}
+
+	// move active block to merge dir
+	for _, file := range mergeFileBlocks {
+		srcPath := filepath.Join(mergeDir, file)
+		targetPath := filepath.Join(db.options.DataDir, file)
+		if err := os.Rename(srcPath, targetPath); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

@@ -9,6 +9,11 @@ var (
 	ErrDataFileNotFound        = errors.New("data file not found")
 	ErrDataDirectory           = errors.New("data directory error")
 	ErrDataExceedAtomicMaxSize = errors.New("data exceed atomic max size")
+	ErrMergeFailed             = errors.New("merge failed")
 )
 
-const initialTransactionSeq uint64 = 0
+const (
+	initialTransactionSeq uint64 = 0
+	mergeDirPath                 = "-bt-merge"
+	mergeFinishedTag             = "merge.finished"
+)

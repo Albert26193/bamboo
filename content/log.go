@@ -89,3 +89,21 @@ func getDataCRC(l *LogStruct, head []byte) uint32 {
 
 	return crc
 }
+
+// EncodeIndex
+func EncodeIndex(indexer *LogStructIndex) []byte {
+	buffer := make([]byte, binary.MaxVarintLen32+binary.MaxVarintLen64)
+	var cnt = 0
+	cnt += binary.PutVarint(buffer[cnt:], int64(indexer.FileIndex))
+	cnt += binary.PutVarint(buffer[cnt:], indexer.Offset)
+	return buffer[:cnt]
+}
+
+// DecodeIndex
+func DecodeIndex(buffer []byte) *LogStructIndex {
+	indexer := &LogStructIndex{}
+	fileIndex, n := binary.Varint(buffer)
+	indexer.FileIndex = uint32(fileIndex)
+	indexer.Offset, _ = binary.Varint(buffer[n:])
+	return indexer
+}
