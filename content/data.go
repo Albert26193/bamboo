@@ -8,7 +8,7 @@ import (
 	"tiny-bitcask/diskIO"
 )
 
-type DataFile struct {
+type BlockFile struct {
 	FileIndex uint32
 	IOManager diskIO.IOManager
 	WritePos  int64
@@ -18,25 +18,25 @@ func GetBlockName(dir string, fileId uint32) string {
 	return filepath.Join(dir, fmt.Sprintf("%09d", fileId)+suffix)
 }
 
-func GenerateNewBlock(fileName string, fileIndex uint32) (*DataFile, error) {
+func GenerateNewBlock(fileName string, fileIndex uint32) (*BlockFile, error) {
 	fio, err := diskIO.NewIOManager(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DataFile{
+	return &BlockFile{
 		FileIndex: fileIndex,
 		IOManager: fio,
 		WritePos:  0,
 	}, nil
 }
 
-func OpenBlock(path string, fileIndex uint32) (*DataFile, error) {
+func OpenBlock(path string, fileIndex uint32) (*BlockFile, error) {
 	name := GetBlockName(path, fileIndex)
 	return GenerateNewBlock(name, fileIndex)
 }
 
-func (d *DataFile) Write(p []byte) error {
+func (d *BlockFile) Write(p []byte) error {
 	n, err := d.IOManager.Write(p)
 	if err != nil {
 		return err
@@ -46,13 +46,13 @@ func (d *DataFile) Write(p []byte) error {
 	return nil
 }
 
-func (d *DataFile) ReadBytes(offset int64, readLen int64) ([]byte, error) {
+func (d *BlockFile) ReadBytes(offset int64, readLen int64) ([]byte, error) {
 	toRead := make([]byte, readLen)
 	_, err := d.IOManager.Read(toRead, offset)
 	return toRead, err
 }
 
-func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
+func (d *BlockFile) ReadLog(offset int64) (*LogStruct, int64, error) {
 	fileSize, err := d.IOManager.Size()
 	if err != nil {
 		return nil, 0, err
@@ -102,10 +102,10 @@ func (d *DataFile) ReadLog(offset int64) (*LogStruct, int64, error) {
 	return logData, totalSize, nil
 }
 
-func (d *DataFile) Sync() error {
+func (d *BlockFile) Sync() error {
 	return d.IOManager.Sync()
 }
 
-func (d *DataFile) Close() error {
+func (d *BlockFile) Close() error {
 	return d.IOManager.Close()
 }

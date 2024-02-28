@@ -1,3 +1,3 @@
 package diskIO
 
-const DataFileMode = 0644
+const BlockFileMode = 0644

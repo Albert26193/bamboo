@@ -9,10 +9,6 @@ import (
 
 type IndexType = int8
 
-const (
-	BtreeIndex IndexType = 0
-	ART        IndexType = 1
-)
 
 type Indexer interface {
 	// Put content into the index
@@ -25,6 +21,8 @@ type Indexer interface {
 	Size() int
 	// Iterator returns an iterator for the index
 	Iterator(reverse bool) Iterator
+	// Destroy the index
+	Destroy() error
 }
 
 type Entry struct {
@@ -41,7 +39,7 @@ func NewIndexer(indexType IndexType) Indexer {
 	case BtreeIndex:
 		return NewBtree()
 	case ART:
-		return nil
+		return NewAdaptiveRadixTree()
 	default:
 		panic("Unknown index type")
 	}

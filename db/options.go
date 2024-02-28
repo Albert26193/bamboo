@@ -25,7 +25,7 @@ var DefaultOptions = Options{
 	DataDir:   os.TempDir(),
 	DataSize:  256 * 1024 * 1024,
 	SyncData:  false,
-	IndexType: BTree,
+	IndexType: ART,
 }
 
 var DefaultIteratorOptions = IteratorOptions{

@@ -10,7 +10,7 @@ func NewFileIOManager(fileName string) (*SystemIO, error) {
 	fd, err := os.OpenFile(
 		fileName,
 		os.O_RDWR|os.O_CREATE|os.O_APPEND,
-		DataFileMode,
+		BlockFileMode,
 	)
 
 	if err != nil {

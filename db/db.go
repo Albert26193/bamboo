@@ -17,8 +17,8 @@ import (
 type DB struct {
 	options        Options
 	muLock         *sync.RWMutex
-	activeBlock    *content.DataFile
-	inactiveBlock  map[uint32]*content.DataFile
+	activeBlock    *content.BlockFile
+	inactiveBlock  map[uint32]*content.BlockFile
 	index          index.Indexer
 	fileList       []int
 	atomicSeq      uint64
@@ -41,7 +41,7 @@ func CreateDB(options Options) (*DB, error) {
 	db := &DB{
 		options:       options,
 		muLock:        new(sync.RWMutex),
-		inactiveBlock: make(map[uint32]*content.DataFile),
+		inactiveBlock: make(map[uint32]*content.BlockFile),
 		index:         index.NewIndexer(options.IndexType),
 	}
 
@@ -303,17 +303,17 @@ func (db *DB) updateMemoryIndex() error {
 			continue
 		}
 
-		var curDataFile *content.DataFile
+		var curBlockFile *content.BlockFile
 		if curIndex == db.activeBlock.FileIndex {
-			curDataFile = db.activeBlock
+			curBlockFile = db.activeBlock
 		} else {
-			curDataFile = db.inactiveBlock[curIndex]
+			curBlockFile = db.inactiveBlock[curIndex]
 		}
 
 		// read log
 		offset := int64(0)
 		for {
-			log, size, err := curDataFile.ReadLog(offset)
+			log, size, err := curBlockFile.ReadLog(offset)
 			if err != nil {
 				if err == io.EOF {
 					break
@@ -365,7 +365,7 @@ func (db *DB) updateMemoryIndex() error {
 }
 
 func (db *DB) GetValueFormLog(logPos *content.LogStructIndex) ([]byte, error) {
-	var fileToFind *content.DataFile
+	var fileToFind *content.BlockFile
 
 	if db.activeBlock.FileIndex == logPos.FileIndex {
 		fileToFind = db.activeBlock
@@ -374,7 +374,7 @@ func (db *DB) GetValueFormLog(logPos *content.LogStructIndex) ([]byte, error) {
 	}
 
 	if fileToFind == nil {
-		return nil, ErrDataFileNotFound
+		return nil, ErrBlockFileNotFound
 	}
 
 	// get data from offset

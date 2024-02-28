@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOpenDataFile(t *testing.T) {
+func TestOpenBlockFile(t *testing.T) {
 	dataFile1, err := OpenBlock(os.TempDir(), 0)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)

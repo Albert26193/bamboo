@@ -45,7 +45,7 @@ func (db *DB) Merge() error {
 	exceptFileIndex := db.activeBlock.FileIndex
 
 	// get all files to merge
-	filesToMerge := make([]*content.DataFile, 0)
+	filesToMerge := make([]*content.BlockFile, 0)
 	for _, file := range db.inactiveBlock {
 		filesToMerge = append(filesToMerge, file)
 	}

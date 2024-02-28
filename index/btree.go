@@ -52,10 +52,14 @@ func (b *Btree) Size() int {
 	return b.tree.Len()
 }
 
+func (b *Btree) Destroy() error {
+	return nil
+}
+
 type btreeIterator struct {
-	currentIndex int
-	reverse      bool
-	values       []*Entry
+	indexNumber    int
+	isReverse      bool
+	positionValues []*Entry
 }
 
 func NewBtreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
@@ -75,46 +79,46 @@ func NewBtreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
 	}
 
 	return &btreeIterator{
-		currentIndex: 0,
-		reverse:      reverse,
-		values:       values,
+		indexNumber:    0,
+		isReverse:      reverse,
+		positionValues: values,
 	}
 }
 
 func (bi *btreeIterator) Next() {
-	bi.currentIndex++
+	bi.indexNumber++
 }
 
 func (bi *btreeIterator) Valid() bool {
-	return bi.currentIndex < len(bi.values)
+	return bi.indexNumber < len(bi.positionValues)
 }
 
 func (bi *btreeIterator) Seek(key []byte) {
-	if bi.reverse {
-		bi.currentIndex = sort.Search(len(bi.values), func(i int) bool {
-			return bytes.Compare(bi.values[i].Key, key) <= 0
+	if bi.isReverse {
+		bi.indexNumber = sort.Search(len(bi.positionValues), func(i int) bool {
+			return bytes.Compare(bi.positionValues[i].Key, key) <= 0
 		})
 	} else {
-		bi.currentIndex = sort.Search(len(bi.values), func(i int) bool {
-			return bytes.Compare(bi.values[i].Key, key) >= 0
+		bi.indexNumber = sort.Search(len(bi.positionValues), func(i int) bool {
+			return bytes.Compare(bi.positionValues[i].Key, key) >= 0
 		})
 	}
 }
 
 func (bi *btreeIterator) Key() []byte {
-	return bi.values[bi.currentIndex].Key
+	return bi.positionValues[bi.indexNumber].Key
 }
 
 func (bi *btreeIterator) Value() *content.LogStructIndex {
-	return bi.values[bi.currentIndex].Position
+	return bi.positionValues[bi.indexNumber].Position
 }
 
 func (bi *btreeIterator) Rewind() {
-	bi.currentIndex = 0
+	bi.indexNumber = 0
 }
 
 func (bi *btreeIterator) Close() {
-	bi.values = nil
+	bi.positionValues = nil
 }
 
 func (b *Btree) Iterator(reverse bool) Iterator {
@@ -125,4 +129,3 @@ func (b *Btree) Iterator(reverse bool) Iterator {
 	defer b.lock.RUnlock()
 	return NewBtreeIterator(b.tree, reverse)
 }
-
