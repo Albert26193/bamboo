@@ -11,6 +11,8 @@ var (
 	ErrDataExceedAtomicMaxSize = errors.New("data exceed atomic max size")
 	ErrMergeFailed             = errors.New("merge failed")
 	ErrDBIsUsing               = errors.New("db is using")
+	ErrMergeSizeNotEnough      = errors.New("merge size not enough")
+	ErrMergeNotReach           = errors.New("merge data scale not reach the threshold")
 )
 
 const (

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"tiny-bitcask/content"
+	"tiny-bitcask/db/utils"
 	"tiny-bitcask/diskIO"
 	"tiny-bitcask/index"
 
@@ -29,6 +29,16 @@ type DB struct {
 	inMergeProcess bool
 	fLock          *flock.Flock
 	bytesCount     uint
+	spaceToCollect int64
+}
+
+// get the status of the db
+// how many files, how many keys, how many bytes
+type DBStatus struct {
+	BlockCount     uint
+	KeyCount       uint
+	BytesToCollect int64
+	DiskUsage      int64
 }
 
 func CreateDB(options Options) (*DB, error) {
@@ -44,6 +54,7 @@ func CreateDB(options Options) (*DB, error) {
 		}
 	}
 
+	// lock to dir: only a process can use the db
 	fLock := flock.New(filepath.Join(options.DataDir, FileLockName))
 	isLocked, err := fLock.TryLock()
 	if err != nil {
@@ -90,6 +101,8 @@ func CreateDB(options Options) (*DB, error) {
 	return db, nil
 }
 
+// why need to restore file system io?
+// when the db is created, the io may be set to mmap, but when the db is closed, the io is set to system io
 func (db *DB) restoreFileSystemIO() error {
 	if db.activeBlock == nil {
 		return nil
@@ -107,6 +120,29 @@ func (db *DB) restoreFileSystemIO() error {
 	return nil
 }
 
+// get the status of the db
+func (db *DB) GetDBStatus() *DBStatus {
+	db.muLock.RLock()
+	defer db.muLock.RUnlock()
+
+	var blocksCnt = uint(len(db.inactiveBlock))
+	if db.activeBlock != nil {
+		blocksCnt++
+	}
+
+	DiskUsage, err := utils.GetDirSize(db.options.DataDir)
+	if err != nil {
+		panic(fmt.Sprintf("GetDirSize failed, error: %v", err))
+	}
+
+	return &DBStatus{
+		BlockCount:     blocksCnt,
+		KeyCount:       uint(db.index.Size()),
+		BytesToCollect: db.spaceToCollect,
+		DiskUsage:      DiskUsage,
+	}
+}
+
 func validateOptions(options Options) error {
 	if options.DataDir == "" {
 		return errors.New("DataDir is empty")
@@ -118,6 +154,10 @@ func validateOptions(options Options) error {
 
 	if options.SyncThreshold <= 0 {
 		return errors.New("SyncThreshold is not positive")
+	}
+
+	if options.MergeThreshold < 0 || options.MergeThreshold > 1 {
+		return errors.New("MergeThreshold is not in range [0, 1]")
 	}
 
 	return nil
@@ -139,6 +179,9 @@ func (db *DB) setActiveBlock() error {
 	return nil
 }
 
+// why return indexer?
+// 1. append log to current active block
+// 2. update index, and return new indexer
 func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error) {
 	// if empty
 	if db.activeBlock == nil {
@@ -190,8 +233,9 @@ func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error)
 
 	// build index
 	logIndex := &content.LogStructIndex{
-		FileIndex: db.activeBlock.FileIndex,
-		Offset:    writePos,
+		FileIndex:     db.activeBlock.FileIndex,
+		Offset:        writePos,
+		DiskByteUsage: uint32(size),
 	}
 
 	return logIndex, nil
@@ -221,8 +265,8 @@ func (db *DB) Put(key []byte, value []byte) error {
 	}
 
 	// update index
-	if succeed := db.index.Put(key, pos); !succeed {
-		return ErrIndexUpdateFailed
+	if oldIndexer := db.index.Put(key, pos); oldIndexer != nil {
+		db.spaceToCollect += int64(oldIndexer.DiskByteUsage)
 	}
 
 	return nil
@@ -261,14 +305,20 @@ func (db *DB) Delete(key []byte) error {
 	}
 
 	// add log to active block
-	_, err := db.lockedAppendLog(log)
+	curIndexer, err := db.lockedAppendLog(log)
 	if err != nil {
 		return err
 	}
+	// the entry is deleted, so the space need to collect
+	db.spaceToCollect += int64(curIndexer.DiskByteUsage)
 
 	//remove key
-	if succeed := db.index.Delete(key); !succeed {
+	oldIndexer, succeed := db.index.Delete(key)
+	if !succeed {
 		return ErrIndexUpdateFailed
+	}
+	if oldIndexer != nil {
+		db.spaceToCollect += int64(oldIndexer.DiskByteUsage)
 	}
 
 	return nil
@@ -339,21 +389,22 @@ func (db *DB) updateMemoryIndex() error {
 		exclusiveMergeId = finId
 	}
 
-	transactionMap := make(map[uint64][]*content.TransActionLog)
-	var currentTransactionSeq = initialTransactionSeq
-
 	var updateIndexFromType = func(key []byte, logType content.LogType, logPos *content.LogStructIndex) {
-		succeed := false
+		var oldIndexer *content.LogStructIndex
 		if logType == content.LogDeleted {
-			succeed = db.index.Delete(key)
+			oldIndexer, _ = db.index.Delete(key)
+			db.spaceToCollect += int64(logPos.DiskByteUsage)
 		} else {
-			succeed = db.index.Put(key, logPos)
+			oldIndexer = db.index.Put(key, logPos)
 		}
 
-		if !succeed {
-			panic("update index failed")
+		if oldIndexer != nil {
+			db.spaceToCollect += int64(oldIndexer.DiskByteUsage)
 		}
 	}
+
+	transactionMap := make(map[uint64][]*content.TransActionLog)
+	var currentTransactionSeq = initialTransactionSeq
 
 	// visit each file
 	for i, fileIndex := range db.fileList {
@@ -384,8 +435,9 @@ func (db *DB) updateMemoryIndex() error {
 
 			// update memory index
 			logPos := &content.LogStructIndex{
-				FileIndex: curIndex,
-				Offset:    offset,
+				FileIndex:     curIndex,
+				Offset:        offset,
+				DiskByteUsage: uint32(size),
 			}
 
 			// get transaction seq
@@ -521,71 +573,6 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 			break
 		}
 	}
-	return nil
-}
-
-func (db *DB) getMergeDir() string {
-	dir := path.Dir(path.Clean(db.options.DataDir))
-	base := path.Base(db.options.DataDir)
-	return filepath.Join(dir, base+mergeDirPath)
-}
-
-func (db *DB) getMergeBlocks() error {
-	mergeDir := db.getMergeDir()
-
-	// check if merge dir exists
-	if _, err := os.Stat(mergeDir); os.IsNotExist(err) {
-		return nil
-	}
-
-	defer func() {
-		_ = os.RemoveAll(mergeDir)
-	}()
-
-	childDirs, err := os.ReadDir(mergeDir)
-	if err != nil {
-		return err
-	}
-
-	// check if merge has finished
-	var isMergeFinished = false
-	var mergeFileBlocks []string
-	for _, dir := range childDirs {
-		if dir.Name() == content.MergeFinishedTag {
-			isMergeFinished = true
-		}
-		mergeFileBlocks = append(mergeFileBlocks, dir.Name())
-	}
-
-	// if not finished
-	if !isMergeFinished {
-		return nil
-	}
-
-	exclusiveBlockId, err := db.getExclusiveMergeBlockId(mergeDir)
-	if err != nil {
-		return err
-	}
-
-	// remove inactive files
-	for fileId := uint32(0); fileId < exclusiveBlockId; fileId++ {
-		fileName := content.GetBlockName(db.options.DataDir, fileId)
-		if _, err := os.Stat(fileName); err == nil {
-			if err := os.Remove(fileName); err != nil {
-				return err
-			}
-		}
-	}
-
-	// move active block to merge dir
-	for _, file := range mergeFileBlocks {
-		srcPath := filepath.Join(mergeDir, file)
-		targetPath := filepath.Join(db.options.DataDir, file)
-		if err := os.Rename(srcPath, targetPath); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

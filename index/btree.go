@@ -21,12 +21,18 @@ func NewBtree() *Btree {
 	}
 }
 
-func (b *Btree) Put(key []byte, position *content.LogStructIndex) bool {
-	e := &Entry{Key: key, Position: position}
+// return older indexer, if exists
+func (b *Btree) Put(key []byte, position *content.LogStructIndex) *content.LogStructIndex {
 	b.lock.Lock()
-	b.tree.ReplaceOrInsert(e)
-	b.lock.Unlock()
-	return true
+	defer b.lock.Unlock()
+
+	en := &Entry{Key: key, Position: position}
+	oldIndexer := b.tree.ReplaceOrInsert(en)
+	if oldIndexer == nil {
+		return nil
+	}
+
+	return oldIndexer.(*Entry).Position
 }
 
 // google btree read is safe, no need to lock
@@ -39,13 +45,19 @@ func (b *Btree) Get(key []byte) *content.LogStructIndex {
 	return item.(*Entry).Position
 }
 
-func (b *Btree) Delete(key []byte) bool {
-	e := &Entry{Key: key}
+// return older indexer, if exists, to calculate the size
+func (b *Btree) Delete(key []byte) (*content.LogStructIndex, bool) {
 	b.lock.Lock()
-	removeItem := b.tree.Delete(e)
-	b.lock.Unlock()
+	defer b.lock.Unlock()
 
-	return removeItem != nil
+	e := &Entry{Key: key}
+	removedItem := b.tree.Delete(e)
+
+	if removedItem == nil {
+		return nil, false
+	}
+
+	return removedItem.(*Entry).Position, true
 }
 
 func (b *Btree) Size() int {

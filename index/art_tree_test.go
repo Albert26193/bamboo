@@ -33,12 +33,16 @@ func TestGet(t *testing.T) {
 func TestDelete(t *testing.T) {
 	art := NewAdaptiveRadixTree()
 
-	res1 := art.Delete([]byte("not exist"))
-	assert.False(t, res1)
+	res1, ok1 := art.Delete([]byte("not exist"))
+	assert.Nil(t, res1)
+	assert.False(t, ok1)
 
 	art.Put([]byte("key-a"), &content.LogStructIndex{FileIndex: 1, Offset: 20})
-	res2 := art.Delete([]byte("key-a"))
-	assert.True(t, res2)
+	res2, ok2 := art.Delete([]byte("key-a"))
+	assert.True(t, ok2)
+	assert.Equal(t, uint32(1), res2.FileIndex)
+	assert.Equal(t, int64(20), res2.Offset)
+
 	pos := art.Get([]byte("key-a"))
 	assert.Nil(t, pos)
 }

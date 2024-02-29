@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"tiny-bitcask/content"
+	"tiny-bitcask/db/utils"
 )
 
 func (db *DB) Merge() error {
@@ -21,6 +22,29 @@ func (db *DB) Merge() error {
 	if db.inMergeProcess {
 		db.muLock.Unlock()
 		return ErrMergeFailed
+	}
+
+	// check if reach merge threshold
+	totalDirSize, err := utils.GetDirSize(db.options.DataDir)
+	if err != nil {
+		db.muLock.Unlock()
+		return err
+	}
+	curRatio := float32(db.spaceToCollect) / float32(totalDirSize)
+	if curRatio < db.options.MergeThreshold {
+		db.muLock.Unlock()
+		return ErrMergeNotReach
+	}
+
+	// check if has enough space to merge
+	availableDiskSpace, err := utils.GetAvailableDiskSpace()
+	if err != nil {
+		db.muLock.Unlock()
+		return err
+	}
+	if uint64(totalDirSize-db.spaceToCollect) >= availableDiskSpace {
+		db.muLock.Unlock()
+		return ErrMergeSizeNotEnough
 	}
 
 	db.inMergeProcess = true
@@ -203,6 +227,68 @@ func (db *DB) getIndexFromHint() error {
 		position := content.DecodeIndex(log.Value)
 		db.index.Put(log.Key, position)
 		offset += size
+	}
+
+	return nil
+}
+
+func (db *DB) getMergeBlocks() error {
+	mergeDir := db.getMergePath()
+
+	// check if merge dir exists
+	if _, err := os.Stat(mergeDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	defer func() {
+		_ = os.RemoveAll(mergeDir)
+	}()
+
+	childDirs, err := os.ReadDir(mergeDir)
+	if err != nil {
+		return err
+	}
+
+	// check if merge has finished
+	var isMergeFinished = false
+	var mergeFileBlocks []string
+	for _, dir := range childDirs {
+		if dir.Name() == content.MergeFinishedTag {
+			isMergeFinished = true
+		}
+		if dir.Name() == FileLockName {
+			continue
+		}
+		mergeFileBlocks = append(mergeFileBlocks, dir.Name())
+	}
+
+	// if not finished
+	if !isMergeFinished {
+		return nil
+	}
+
+	exclusiveBlockId, err := db.getExclusiveMergeBlockId(mergeDir)
+	if err != nil {
+		return err
+	}
+
+	// remove inactive files
+	for fileId := uint32(0); fileId < exclusiveBlockId; fileId++ {
+		fileName := content.GetBlockName(db.options.DataDir, fileId)
+		if _, err := os.Stat(fileName); err == nil {
+			if err := os.Remove(fileName); err != nil {
+				return err
+			}
+		}
+	}
+
+	// move active block to merge dir
+	for _, file := range mergeFileBlocks {
+		srcPath := filepath.Join(mergeDir, file)
+		targetPath := filepath.Join(db.options.DataDir, file)
+		if err := os.Rename(srcPath, targetPath); err != nil {
+			return err
+		}
 	}
 
 	return nil

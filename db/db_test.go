@@ -325,3 +325,54 @@ func TestSync(t *testing.T) {
 	err = db.Sync()
 	assert.Nil(t, err)
 }
+
+func TestDB_FileLock(t *testing.T) {
+	opts := DefaultOptions
+
+	currentTime := time.Now().Unix()
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-lock-", strconv.FormatInt(currentTime, 10)}, ""))
+
+	opts.DataDir = dir
+	db, err := CreateDB(opts)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	_, err = CreateDB(opts)
+	assert.Equal(t, ErrDBIsUsing, err)
+
+	err = db.Close()
+	assert.Nil(t, err)
+
+	db2, err := CreateDB(opts)
+	assert.Nil(t, err)
+	assert.NotNil(t, db2)
+	err = db2.Close()
+	assert.Nil(t, err)
+}
+
+func TestStatus(t *testing.T) {
+	opts := DefaultOptions
+	dir, _ := os.MkdirTemp("", "bitcask-go-stat")
+	opts.DataDir = dir
+	db, err := CreateDB(opts)
+	defer destroyDB(db)
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	for i := 100; i < 10000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.RandomValue(128))
+		assert.Nil(t, err)
+	}
+	for i := 100; i < 1000; i++ {
+		err := db.Delete(utils.GetTestKey(i))
+		assert.Nil(t, err)
+	}
+	for i := 2000; i < 5000; i++ {
+		err := db.Put(utils.GetTestKey(i), utils.RandomValue(128))
+		assert.Nil(t, err)
+	}
+
+	stat := db.GetDBStatus()
+	assert.NotNil(t, stat)
+}

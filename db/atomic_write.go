@@ -121,10 +121,17 @@ func (aw *atomicWrite) Commit() error {
 
 	// update memory index
 	for _, rec := range aw.dataToWrite {
+		indexer := indexers[string(rec.Key)]
+		var oldIndexer *content.LogStructIndex
 		if rec.Type == content.LogDeleted {
-			aw.db.index.Delete(rec.Key)
+			oldIndexer, _ = aw.db.index.Delete(rec.Key)
 		} else {
-			aw.db.index.Put(rec.Key, indexers[string(rec.Key)])
+			oldIndexer = aw.db.index.Put(rec.Key, indexer)
+		}
+
+		// add size to db.sizeToCollect
+		if oldIndexer != nil {
+			aw.db.spaceToCollect += int64(oldIndexer.DiskByteUsage)
 		}
 	}
 

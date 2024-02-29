@@ -25,18 +25,25 @@ func NewAdaptiveRadixTree() *AdaptiveRadixTree {
 func (a *AdaptiveRadixTree) Get(key []byte) *content.LogStructIndex {
 	a.treeLock.RLock()
 	defer a.treeLock.RUnlock()
+
 	if value, ok := a.tree.Search(key); ok {
 		return value.(*content.LogStructIndex)
 	}
 	return nil
 }
 
-func (a *AdaptiveRadixTree) Delete(key []byte) bool {
+// delete: return the old indexer, so we can calculate the size of used space
+func (a *AdaptiveRadixTree) Delete(key []byte) (*content.LogStructIndex, bool) {
 	a.treeLock.Lock()
 	defer a.treeLock.Unlock()
 
-	_, hasDeleted := a.tree.Delete(key)
-	return hasDeleted
+	oldIndexer, hasDeleted := a.tree.Delete(key)
+
+	if oldIndexer == nil {
+		return nil, hasDeleted
+	}
+
+	return oldIndexer.(*content.LogStructIndex), hasDeleted
 }
 
 func (a *AdaptiveRadixTree) Size() int {
@@ -46,11 +53,16 @@ func (a *AdaptiveRadixTree) Size() int {
 	return a.tree.Size()
 }
 
-func (a *AdaptiveRadixTree) Put(key []byte, position *content.LogStructIndex) bool {
+// put: return the old indexer, so we can calculate the size of used space
+func (a *AdaptiveRadixTree) Put(key []byte, position *content.LogStructIndex) *content.LogStructIndex {
 	a.treeLock.Lock()
-	a.tree.Insert(key, position)
 	defer a.treeLock.Unlock()
-	return true
+
+	oldIndexer, _ := a.tree.Insert(key, position)
+	if oldIndexer != nil {
+		return oldIndexer.(*content.LogStructIndex)
+	}
+	return nil
 }
 
 func (a *AdaptiveRadixTree) Destroy() error {

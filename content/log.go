@@ -16,6 +16,8 @@ type LogStruct struct {
 type LogStructIndex struct {
 	FileIndex uint32
 	Offset    int64
+	// DiskByteUsage is the size of Total-Log-Block which matches the indexer
+	DiskByteUsage uint32
 }
 
 // Header
@@ -92,18 +94,32 @@ func getDataCRC(l *LogStruct, head []byte) uint32 {
 
 // EncodeIndex
 func EncodeIndex(indexer *LogStructIndex) []byte {
-	buffer := make([]byte, binary.MaxVarintLen32+binary.MaxVarintLen64)
+	// 5bytes(binary.MaxVarintLen32) + 10bytes(binary.MaxVarintLen64
+	// 1. fileIndex
+	// 2. offset
+	// 3. DiskByteUsage
+	buffer := make([]byte, binary.MaxVarintLen32*2+binary.MaxVarintLen64)
 	var cnt = 0
 	cnt += binary.PutVarint(buffer[cnt:], int64(indexer.FileIndex))
 	cnt += binary.PutVarint(buffer[cnt:], indexer.Offset)
+	cnt += binary.PutVarint(buffer[cnt:], int64(indexer.DiskByteUsage))
 	return buffer[:cnt]
 }
 
 // DecodeIndex
 func DecodeIndex(buffer []byte) *LogStructIndex {
 	indexer := &LogStructIndex{}
-	fileIndex, n := binary.Varint(buffer)
+	// get fileIndex
+	fileIndex, fileIndexByteCnt := binary.Varint(buffer)
 	indexer.FileIndex = uint32(fileIndex)
-	indexer.Offset, _ = binary.Varint(buffer[n:])
+
+	// get offset
+	offset, offsetByteCnt := binary.Varint(buffer[fileIndexByteCnt:])
+	indexer.Offset = offset
+
+	// get DiskByteUsage
+	diskByteUsage, _ := binary.Varint(buffer[(fileIndexByteCnt + offsetByteCnt):])
+	indexer.DiskByteUsage = uint32(diskByteUsage)
+
 	return indexer
 }

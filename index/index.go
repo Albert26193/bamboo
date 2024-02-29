@@ -9,18 +9,24 @@ import (
 
 type IndexType = int8
 
-
 type Indexer interface {
 	// Put content into the index
-	Put(key []byte, position *content.LogStructIndex) bool
+	// return: old value, if exists, because we need to calculate the size
+	Put(key []byte, position *content.LogStructIndex) *content.LogStructIndex
+
 	// Get returns the index of the file
 	Get(key []byte) *content.LogStructIndex
+
 	// Delete removes the index of the file
-	Delete(key []byte) bool
+	// return: old value, if exists, because we need to calculate the size
+	Delete(key []byte) (*content.LogStructIndex, bool)
+
 	// get Size
 	Size() int
+
 	// Iterator returns an iterator for the index
 	Iterator(reverse bool) Iterator
+
 	// Destroy the index
 	Destroy() error
 }
