@@ -8,14 +8,14 @@ import (
 type LogType = byte
 
 const (
-	suffix                   = ".btdata"
+	Suffix                   = ".btdata"
 	MaxLogHeaderSize int64   = binary.MaxVarintLen32*2 + 5
 	LogNormal        LogType = 0
 	LogDeleted       LogType = 1
 	LogAtomicFinish  LogType = 2
 
 	HintFileTag      = "bitcask-hint"
-	MergeFinishedTag = "merge.finished"
+	MergeFinishedTag = "MERGE.FINISHED"
 )
 
 var ErrCRCNotMatch = errors.New("crc not match")

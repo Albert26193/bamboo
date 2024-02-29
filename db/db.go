@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -11,7 +12,10 @@ import (
 	"strings"
 	"sync"
 	"tiny-bitcask/content"
+	"tiny-bitcask/diskIO"
 	"tiny-bitcask/index"
+
+	"github.com/gofrs/flock"
 )
 
 type DB struct {
@@ -23,6 +27,8 @@ type DB struct {
 	fileList       []int
 	atomicSeq      uint64
 	inMergeProcess bool
+	fLock          *flock.Flock
+	bytesCount     uint
 }
 
 func CreateDB(options Options) (*DB, error) {
@@ -38,11 +44,21 @@ func CreateDB(options Options) (*DB, error) {
 		}
 	}
 
+	fLock := flock.New(filepath.Join(options.DataDir, FileLockName))
+	isLocked, err := fLock.TryLock()
+	if err != nil {
+		return nil, err
+	}
+	if !isLocked {
+		return nil, ErrDBIsUsing
+	}
+
 	db := &DB{
 		options:       options,
 		muLock:        new(sync.RWMutex),
 		inactiveBlock: make(map[uint32]*content.BlockFile),
 		index:         index.NewIndexer(options.IndexType),
+		fLock:         fLock,
 	}
 
 	// first, check if has merge dir
@@ -65,7 +81,30 @@ func CreateDB(options Options) (*DB, error) {
 		return nil, err
 	}
 
+	// set io to system io, because need to write or sync data
+	if db.options.QuickStart {
+		if err := db.restoreFileSystemIO(); err != nil {
+			return nil, err
+		}
+	}
 	return db, nil
+}
+
+func (db *DB) restoreFileSystemIO() error {
+	if db.activeBlock == nil {
+		return nil
+	}
+
+	if err := db.activeBlock.SetIOManager(db.options.DataDir, diskIO.FileSystemIO); err != nil {
+		return err
+	}
+
+	for _, dataFile := range db.inactiveBlock {
+		if err := dataFile.SetIOManager(db.options.DataDir, diskIO.FileSystemIO); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateOptions(options Options) error {
@@ -77,16 +116,21 @@ func validateOptions(options Options) error {
 		return errors.New("DataSize is not positive")
 	}
 
+	if options.SyncThreshold <= 0 {
+		return errors.New("SyncThreshold is not positive")
+	}
+
 	return nil
 }
 
-func (db *DB) setActiveFile() error {
+func (db *DB) setActiveBlock() error {
 	var initialFileIndex uint32 = 0
 	if db.activeBlock != nil {
 		initialFileIndex = db.activeBlock.FileIndex + 1
 	}
 
-	newFile, err := content.OpenBlock(db.options.DataDir, initialFileIndex)
+	newFile, err := content.OpenBlock(db.options.DataDir, initialFileIndex, diskIO.FileSystemIO)
+
 	if err != nil {
 		panic(err)
 	}
@@ -98,13 +142,15 @@ func (db *DB) setActiveFile() error {
 func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error) {
 	// if empty
 	if db.activeBlock == nil {
-		if err := db.setActiveFile(); err != nil {
+		if err := db.setActiveBlock(); err != nil {
 			panic(err)
 		}
 	}
 
 	// write log to active block
 	encodeLog, size := content.Encoder(log)
+	// update bytes count
+	db.bytesCount += uint(size)
 
 	// if reach the max size
 	if db.activeBlock.WritePos+size > int64(db.options.DataSize) {
@@ -117,9 +163,17 @@ func (db *DB) appendLog(log *content.LogStruct) (*content.LogStructIndex, error)
 		db.inactiveBlock[db.activeBlock.FileIndex] = db.activeBlock
 
 		// create a new active block
-		if err := db.setActiveFile(); err != nil {
+		if err := db.setActiveBlock(); err != nil {
 			return nil, err
 		}
+	}
+
+	// check options: weather to sync data
+	if db.options.SyncData && db.bytesCount >= db.options.SyncThreshold {
+		if err := db.activeBlock.Sync(); err != nil {
+			return nil, err
+		}
+		db.bytesCount = 0
 	}
 
 	writePos := db.activeBlock.WritePos
@@ -229,7 +283,7 @@ func (db *DB) loadFromDisk() error {
 	var fileList []int
 
 	for _, dir := range dir {
-		if strings.HasSuffix(dir.Name(), ".btdata") {
+		if strings.HasSuffix(dir.Name(), content.Suffix) {
 			fileNames := strings.Split(dir.Name(), ".")
 			fileIndex, err := strconv.Atoi(fileNames[0])
 
@@ -246,15 +300,22 @@ func (db *DB) loadFromDisk() error {
 
 	// load index
 	for i, fileIndex := range fileList {
-		dataFile, err := content.OpenBlock(db.options.DataDir, uint32(fileIndex))
+		// quick start: mmap
+		ioType := diskIO.FileSystemIO
+		if db.options.QuickStart {
+			ioType = diskIO.MMapIO
+		}
+
+		dataBlock, err := content.OpenBlock(db.options.DataDir, uint32(fileIndex), ioType)
+
 		if err != nil {
-			return err
+			return errors.New("error here")
 		}
 
 		if i == len(fileList)-1 {
-			db.activeBlock = dataFile
+			db.activeBlock = dataBlock
 		} else {
-			db.inactiveBlock[uint32(fileIndex)] = dataFile
+			db.inactiveBlock[uint32(fileIndex)] = dataBlock
 		}
 	}
 	return nil
@@ -400,6 +461,13 @@ func (db *DB) Sync() error {
 }
 
 func (db *DB) Close() error {
+	// unlock
+	defer func() {
+		if err := db.fLock.Unlock(); err != nil {
+			panic(fmt.Sprintf("Lock release failed, error: %v", err))
+		}
+	}()
+
 	if db.activeBlock == nil {
 		return nil
 	}
@@ -417,6 +485,7 @@ func (db *DB) Close() error {
 			return err
 		}
 	}
+
 	return nil
 }
 

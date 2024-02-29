@@ -12,6 +12,13 @@ type IOManager interface {
 	Size() (int64, error)
 }
 
-func NewIOManager(fileName string) (IOManager, error) {
-	return NewFileIOManager(fileName)
+func NewIOManager(fileName string, ioType IOType) (IOManager, error) {
+	switch ioType {
+	case MMapIO:
+		return NewMMapIOManager(fileName)
+	case FileSystemIO:
+		return NewFileIOManager(fileName)
+	default:
+		panic("not support io type")
+	}
 }

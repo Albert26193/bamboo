@@ -3,26 +3,27 @@ package content
 import (
 	"os"
 	"testing"
+	"tiny-bitcask/diskIO"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOpenBlockFile(t *testing.T) {
-	dataFile1, err := OpenBlock(os.TempDir(), 0)
+	dataFile1, err := OpenBlock(os.TempDir(), 0, diskIO.MMapIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)
 
-	dataFile2, err := OpenBlock(os.TempDir(), 123)
+	dataFile2, err := OpenBlock(os.TempDir(), 123, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile2)
 
-	dataFile3, err := OpenBlock(os.TempDir(), 65535*65535)
+	dataFile3, err := OpenBlock(os.TempDir(), 65535*65535, diskIO.MMapIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile3)
 }
 
 func TestDataWrite(t *testing.T) {
-	dataFile, err := OpenBlock(os.TempDir(), 0)
+	dataFile, err := OpenBlock(os.TempDir(), 0, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -37,7 +38,7 @@ func TestDataWrite(t *testing.T) {
 }
 
 func TestDataClose(t *testing.T) {
-	dataFile, err := OpenBlock(os.TempDir(), 123)
+	dataFile, err := OpenBlock(os.TempDir(), 123, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -49,7 +50,7 @@ func TestDataClose(t *testing.T) {
 }
 
 func TestSync(t *testing.T) {
-	dataFile, err := OpenBlock(os.TempDir(), 456)
+	dataFile, err := OpenBlock(os.TempDir(), 456, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -61,7 +62,7 @@ func TestSync(t *testing.T) {
 }
 
 func TestReadLogRecord(t *testing.T) {
-	dataFile, err := OpenBlock(os.TempDir(), 6666)
+	dataFile, err := OpenBlock(os.TempDir(), 6666, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 

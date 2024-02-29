@@ -37,7 +37,7 @@ func (db *DB) Merge() error {
 	// close active block
 	db.inactiveBlock[db.activeBlock.FileIndex] = db.activeBlock
 	// open new active block
-	if err := db.setActiveFile(); err != nil {
+	if err := db.setActiveBlock(); err != nil {
 		db.muLock.Unlock()
 		return nil
 	}

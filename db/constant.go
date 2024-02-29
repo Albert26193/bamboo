@@ -10,10 +10,12 @@ var (
 	ErrDataDirectory           = errors.New("data directory error")
 	ErrDataExceedAtomicMaxSize = errors.New("data exceed atomic max size")
 	ErrMergeFailed             = errors.New("merge failed")
+	ErrDBIsUsing               = errors.New("db is using")
 )
 
 const (
 	initialTransactionSeq uint64 = 0
-	mergeDirPath                 = "-bt-merge"
-	mergeFinishedTag             = "merge.finished"
+	mergeDirPath                 = "-BT-MERGE"
+	mergeFinishedTag             = "MERGE.FINISHED"
+	FileLockName                 = "IOLOCK"
 )

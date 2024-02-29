@@ -15,11 +15,11 @@ type BlockFile struct {
 }
 
 func GetBlockName(dir string, fileId uint32) string {
-	return filepath.Join(dir, fmt.Sprintf("%09d", fileId)+suffix)
+	return filepath.Join(dir, fmt.Sprintf("%09d", fileId)+Suffix)
 }
 
-func GenerateNewBlock(fileName string, fileIndex uint32) (*BlockFile, error) {
-	fio, err := diskIO.NewIOManager(fileName)
+func GenerateNewBlock(fileName string, fileIndex uint32, ioType diskIO.IOType) (*BlockFile, error) {
+	fio, err := diskIO.NewIOManager(fileName, ioType)
 	if err != nil {
 		return nil, err
 	}
@@ -31,9 +31,9 @@ func GenerateNewBlock(fileName string, fileIndex uint32) (*BlockFile, error) {
 	}, nil
 }
 
-func OpenBlock(path string, fileIndex uint32) (*BlockFile, error) {
+func OpenBlock(path string, fileIndex uint32, ioType diskIO.IOType) (*BlockFile, error) {
 	name := GetBlockName(path, fileIndex)
-	return GenerateNewBlock(name, fileIndex)
+	return GenerateNewBlock(name, fileIndex, ioType)
 }
 
 func (d *BlockFile) Write(p []byte) error {
@@ -43,6 +43,21 @@ func (d *BlockFile) Write(p []byte) error {
 	}
 
 	d.WritePos += int64(n)
+	return nil
+}
+
+func (d *BlockFile) SetIOManager(dir string, ioType diskIO.IOType) error {
+	if err := d.IOManager.Close(); err != nil {
+		return err
+	}
+
+	ioManager, err := diskIO.NewIOManager(GetBlockName(dir, d.FileIndex), ioType)
+
+	if err != nil {
+		return err
+	}
+
+	d.IOManager = ioManager
 	return nil
 }
 
