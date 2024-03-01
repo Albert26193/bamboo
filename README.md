@@ -63,3 +63,7 @@ func main() {
 - **Support for Multiple Data Types**: In the future, Bamboo will support more data types, such as `list`, `set`, and `hash`.
 - **More Benchmark**: In the future, Bamboo will support more benchmark tests, such as `YCSB`.
 - **Disk IO Optimization**: In the future, Bamboo will support more disk IO optimization, such as `WAL`.
+
+## Thanks
+
+- Great thanks to the [RoseDB](https://github.com/rosedblabs/rosedb), and [miniDB](https://github.com/rosedblabs/minidb), which provide a lot of inspiration for this project.
