@@ -588,3 +588,10 @@ func destroyDB(db *DB) {
 		}
 	}
 }
+
+// backup db
+func (db *DB) Backup(dir string) error {
+	db.muLock.RLock()
+	defer db.muLock.RUnlock()
+	return utils.BackupDir(db.options.DataDir, dir, []string{FileLockName})
+}

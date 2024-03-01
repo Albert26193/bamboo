@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// 没有任何数据的情况下进行 merge
-func TestDB_Merge(t *testing.T) {
+// empty
+func TestMerge(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-merge-1")
+	dir, _ := os.MkdirTemp("", "bitcask-merge-1")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -23,10 +23,10 @@ func TestDB_Merge(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-// 全部都是有效的数据
-func TestDB_Merge2(t *testing.T) {
+// all valid data
+func TestMergeValid(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-merge-2")
+	dir, _ := os.MkdirTemp("", "bitcask-merge-2")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -43,7 +43,7 @@ func TestDB_Merge2(t *testing.T) {
 	err = db.Merge()
 	assert.Nil(t, err)
 
-	// 重启校验
+	// restart check
 	err = db.Close()
 	assert.Nil(t, err)
 
@@ -62,10 +62,10 @@ func TestDB_Merge2(t *testing.T) {
 	}
 }
 
-// 有失效的数据，和被重复 Put 的数据
-func TestDB_Merge3(t *testing.T) {
+// has invalid data and new data
+func TestMergeMixed(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-merge-3")
+	dir, _ := os.MkdirTemp("", "bitcask-merge-3")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -90,7 +90,7 @@ func TestDB_Merge3(t *testing.T) {
 	err = db.Merge()
 	assert.Nil(t, err)
 
-	// 重启校验
+	// restart check
 	err = db.Close()
 	assert.Nil(t, err)
 
@@ -113,10 +113,10 @@ func TestDB_Merge3(t *testing.T) {
 	}
 }
 
-// 全部是无效的数据
-func TestDB_Merge4(t *testing.T) {
+// all invalid data
+func TestMergeInvalid(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-merge-4")
+	dir, _ := os.MkdirTemp("", "bitcask-merge-4")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -137,7 +137,7 @@ func TestDB_Merge4(t *testing.T) {
 	err = db.Merge()
 	assert.Nil(t, err)
 
-	// 重启校验
+	// restart check
 	err = db.Close()
 	assert.Nil(t, err)
 
@@ -150,10 +150,10 @@ func TestDB_Merge4(t *testing.T) {
 	assert.Equal(t, 0, len(keys))
 }
 
-// Merge 的过程中有新的数据写入或删除
-func TestDB_Merge5(t *testing.T) {
+// Merge in process and hav new data insert or update
+func TestMergeInProcess(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-merge-5")
+	dir, _ := os.MkdirTemp("", "bitcask-merge-5")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -184,7 +184,7 @@ func TestDB_Merge5(t *testing.T) {
 	assert.Nil(t, err)
 	wg.Wait()
 
-	//重启校验
+	// restart
 	err = db.Close()
 	assert.Nil(t, err)
 
