@@ -1,10 +1,10 @@
 package db
 
 import (
+	"bamboo/content"
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
-	"tiny-bitcask/content"
 )
 
 type atomicWrite struct {
@@ -14,7 +14,7 @@ type atomicWrite struct {
 	options     WriteOptions
 }
 
-var finishedTag = []byte("bitcask-fin")
+var finishedTag = []byte("bamboo-fin")
 
 func (db *DB) NewAtomicWrite(option WriteOptions) *atomicWrite {
 	return &atomicWrite{

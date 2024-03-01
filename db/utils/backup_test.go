@@ -10,8 +10,8 @@ import (
 func TestBackupDir(t *testing.T) {
 	baseDir := "/tmp"
 
-	srcDir, _ := os.MkdirTemp(baseDir, "bitcask_src")
-	distDir, _ := os.MkdirTemp(baseDir, "bitcask_dist")
+	srcDir, _ := os.MkdirTemp(baseDir, "bamboo_src")
+	distDir, _ := os.MkdirTemp(baseDir, "bamboo_dist")
 	excludeDirs := []string{}
 
 	err := BackupDir(srcDir, distDir, excludeDirs)

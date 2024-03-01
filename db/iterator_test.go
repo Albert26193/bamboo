@@ -1,21 +1,20 @@
 package db
 
 import (
+	"bamboo/db/utils"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-	"tiny-bitcask/db/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestNewIterator(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -30,7 +29,7 @@ func TestNewIterator(t *testing.T) {
 func TestIterator(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -53,7 +52,7 @@ func TestIterator(t *testing.T) {
 func TestDBIteratorMultiValues(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-iterator-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)

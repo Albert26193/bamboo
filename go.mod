@@ -1,4 +1,4 @@
-module tiny-bitcask
+module bamboo
 
 go 1.21.3
 

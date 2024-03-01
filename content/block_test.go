@@ -1,9 +1,9 @@
 package content
 
 import (
+	"bamboo/diskIO"
 	"os"
 	"testing"
-	"tiny-bitcask/diskIO"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -62,13 +62,13 @@ func TestSync(t *testing.T) {
 }
 
 func TestReadLogRecord(t *testing.T) {
-	dataFile, err := OpenBlock(os.TempDir(), 6666, diskIO.FileSystemIO)
+	dataFile, err := OpenBlock(os.TempDir(), 99, diskIO.FileSystemIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
 	rec1 := &LogStruct{
 		Key:   []byte("name"),
-		Value: []byte("bitcask kv go"),
+		Value: []byte("bamboo"),
 	}
 	res1, size1 := Encoder(rec1)
 	err = dataFile.Write(res1)

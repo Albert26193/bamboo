@@ -1,7 +1,7 @@
 package db
 
 import (
-	"tiny-bitcask/index"
+	"bamboo/index"
 )
 
 // Iterator is an interface for iterating over key-value pairs in a Bitcask database.

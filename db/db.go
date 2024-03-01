@@ -1,6 +1,10 @@
 package db
 
 import (
+	"bamboo/content"
+	"bamboo/db/utils"
+	"bamboo/diskIO"
+	"bamboo/index"
 	"errors"
 	"fmt"
 	"io"
@@ -10,10 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"tiny-bitcask/content"
-	"tiny-bitcask/db/utils"
-	"tiny-bitcask/diskIO"
-	"tiny-bitcask/index"
 
 	"github.com/gofrs/flock"
 )

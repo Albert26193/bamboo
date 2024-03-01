@@ -1,10 +1,10 @@
 package db
 
 import (
+	"bamboo/db/utils"
 	"os"
 	"sync"
 	"testing"
-	"tiny-bitcask/db/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +12,7 @@ import (
 // empty
 func TestMerge(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-merge-1")
+	dir, _ := os.MkdirTemp("", "bamboo-merge-1")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -26,7 +26,7 @@ func TestMerge(t *testing.T) {
 // all valid data
 func TestMergeValid(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-merge-2")
+	dir, _ := os.MkdirTemp("", "bamboo-merge-2")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -65,7 +65,7 @@ func TestMergeValid(t *testing.T) {
 // has invalid data and new data
 func TestMergeMixed(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-merge-3")
+	dir, _ := os.MkdirTemp("", "bamboo-merge-3")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -116,7 +116,7 @@ func TestMergeMixed(t *testing.T) {
 // all invalid data
 func TestMergeInvalid(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-merge-4")
+	dir, _ := os.MkdirTemp("", "bamboo-merge-4")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir
@@ -153,7 +153,7 @@ func TestMergeInvalid(t *testing.T) {
 // Merge in process and hav new data insert or update
 func TestMergeInProcess(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-merge-5")
+	dir, _ := os.MkdirTemp("", "bamboo-merge-5")
 	opts.DataSize = 32 * 1024 * 1024
 	opts.MergeThreshold = 0
 	opts.DataDir = dir

@@ -14,7 +14,7 @@ const (
 	LogDeleted       LogType = 1
 	LogAtomicFinish  LogType = 2
 
-	HintFileTag      = "bitcask-hint"
+	HintFileTag      = "bamboo-hint"
 	MergeFinishedTag = "MERGE.FINISHED"
 )
 

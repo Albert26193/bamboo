@@ -1,8 +1,8 @@
 package content
 
 import (
+	"bamboo/diskIO"
 	"path/filepath"
-	"tiny-bitcask/diskIO"
 )
 
 func GenerateNewHintBlock(fileName string) (*BlockFile, error) {

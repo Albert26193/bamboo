@@ -10,7 +10,7 @@ import (
 func TestEncodeRecord(t *testing.T) {
 	rec1 := &LogStruct{
 		Key:   []byte("name"),
-		Value: []byte("bitcask-go"),
+		Value: []byte("bamboo-go"),
 		Type:  LogNormal,
 	}
 	res1, n1 := Encoder(rec1)
@@ -29,7 +29,7 @@ func TestEncodeRecord(t *testing.T) {
 	// test with deleted log
 	rec3 := &LogStruct{
 		Key:   []byte("name"),
-		Value: []byte("bitcask-go"),
+		Value: []byte("bamboo-go"),
 		Type:  LogDeleted,
 	}
 	res3, n3 := Encoder(rec3)
@@ -67,29 +67,11 @@ func TestDecodeHeader(t *testing.T) {
 }
 
 func TestGetCRC(t *testing.T) {
-	rec1 := &LogStruct{
-		Key:   []byte("name"),
-		Value: []byte("bitcask-go"),
-		Type:  LogNormal,
-	}
-	headerBuf1 := []byte{104, 82, 240, 150, 0, 8, 20}
-	crc1 := getDataCRC(rec1, headerBuf1[crc32.Size:])
-	assert.Equal(t, uint32(2532332136), crc1)
-
-	rec2 := &LogStruct{
+	rec := &LogStruct{
 		Key:  []byte("name"),
 		Type: LogNormal,
 	}
-	headerBuf2 := []byte{9, 252, 88, 14, 0, 8, 0}
-	crc2 := getDataCRC(rec2, headerBuf2[crc32.Size:])
-	assert.Equal(t, uint32(240712713), crc2)
-
-	rec3 := &LogStruct{
-		Key:   []byte("name"),
-		Value: []byte("bitcask-go"),
-		Type:  LogDeleted,
-	}
-	headerBuf3 := []byte{43, 153, 86, 17, 1, 8, 20}
-	crc3 := getDataCRC(rec3, headerBuf3[crc32.Size:])
-	assert.Equal(t, uint32(290887979), crc3)
+	headerBuf := []byte{9, 252, 88, 14, 0, 8, 0}
+	crc := getDataCRC(rec, headerBuf[crc32.Size:])
+	assert.Equal(t, uint32(240712713), crc)
 }

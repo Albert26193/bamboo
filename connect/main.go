@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bamboo/db"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"tiny-bitcask/db"
 )
 
 var dbInstance *db.DB
@@ -14,7 +14,7 @@ var dbInstance *db.DB
 func init() {
 	var err error
 	options := db.DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-http")
+	dir, _ := os.MkdirTemp("", "bamboo-http")
 	options.DataDir = dir
 	dbInstance, err = db.CreateDB(options)
 	if err != nil {
@@ -109,11 +109,11 @@ func handleStat(writer http.ResponseWriter, request *http.Request) {
 
 func main() {
 	// register
-	http.HandleFunc("/bitcask/put", putHandler)
-	http.HandleFunc("/bitcask/get", getHandler)
-	http.HandleFunc("/bitcask/delete", deleteHandler)
-	http.HandleFunc("/bitcask/listkeys", listKeysHandler)
-	http.HandleFunc("/bitcask/stat", handleStat)
+	http.HandleFunc("/bamboo/put", putHandler)
+	http.HandleFunc("/bamboo/get", getHandler)
+	http.HandleFunc("/bamboo/delete", deleteHandler)
+	http.HandleFunc("/bamboo/listkeys", listKeysHandler)
+	http.HandleFunc("/bamboo/stat", handleStat)
 
 	// start
 	_ = http.ListenAndServe("0.0.0.0:6378", nil)

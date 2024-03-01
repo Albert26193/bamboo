@@ -1,14 +1,14 @@
 package db
 
 import (
+	"bamboo/content"
+	"bamboo/db/utils"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"tiny-bitcask/content"
-	"tiny-bitcask/db/utils"
 )
 
 func (db *DB) Merge() error {
@@ -94,7 +94,7 @@ func (db *DB) Merge() error {
 		return err
 	}
 
-	// open a new bitcask engine
+	// open a new bamboo engine
 	mergeOptions := db.options
 	mergeOptions.DataDir = mergePath
 	mergeOptions.SyncData = false

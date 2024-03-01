@@ -1,11 +1,11 @@
 package content
 
 import (
+	"bamboo/diskIO"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"path/filepath"
-	"tiny-bitcask/diskIO"
 )
 
 type BlockFile struct {
@@ -110,6 +110,8 @@ func (d *BlockFile) ReadLog(offset int64) (*LogStruct, int64, error) {
 
 	var totalSize = headSize + keySize + valueSize
 	crc := getDataCRC(logData, headBuffer[crc32.Size:headSize])
+
+	// if crc not match, return error
 	if crc != headInfo.crc {
 		return nil, 0, ErrCRCNotMatch
 	}

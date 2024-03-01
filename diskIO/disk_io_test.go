@@ -15,7 +15,7 @@ func destroyFile(path string) {
 }
 
 func TestNewIOManager(t *testing.T) {
-	path := filepath.Join("/tmp", "bitcask_a.data")
+	path := filepath.Join("/tmp", "bamboo_a.data")
 	io, err := NewFileIOManager(path)
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func TestNewIOManager(t *testing.T) {
 }
 
 func TestSystemIOWrite(t *testing.T) {
-	path := filepath.Join("/tmp", "bitcask_a.data")
+	path := filepath.Join("/tmp", "bamboo_a.data")
 	io, err := NewFileIOManager(path)
 	if err != nil {
 		panic(err)
@@ -50,7 +50,7 @@ func TestSystemIOWrite(t *testing.T) {
 }
 
 func TestSystemIORead(t *testing.T) {
-	path := filepath.Join("/tmp", "bitcask_a.data")
+	path := filepath.Join("/tmp", "bamboo_a.data")
 	io, err := NewFileIOManager(path)
 	if err != nil {
 		panic(err)
@@ -69,7 +69,7 @@ func TestSystemIORead(t *testing.T) {
 }
 
 func TestSystemIOSync(t *testing.T) {
-	path := filepath.Join("/tmp", "bitcask_a.data")
+	path := filepath.Join("/tmp", "bamboo_a.data")
 	io, err := NewFileIOManager(path)
 	if err != nil {
 		panic(err)
@@ -80,7 +80,7 @@ func TestSystemIOSync(t *testing.T) {
 }
 
 func TestSystemIOClose(t *testing.T) {
-	path := filepath.Join("/tmp", "bitcask_a.data")
+	path := filepath.Join("/tmp", "bamboo_a.data")
 	io, err := NewFileIOManager(path)
 	if err != nil {
 		panic(err)

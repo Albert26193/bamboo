@@ -4,14 +4,14 @@ import (
 	"os"
 	"testing"
 
-	"tiny-bitcask/db/utils"
+	"bamboo/db/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWriteBatch1(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-batch-1")
+	dir, _ := os.MkdirTemp("", "bamboo-batch-1")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -47,7 +47,7 @@ func TestWriteBatch1(t *testing.T) {
 
 func TestWriteBatch2(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-batch-2")
+	dir, _ := os.MkdirTemp("", "bamboo-batch-2")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)

@@ -28,7 +28,7 @@ var DefaultOptions = Options{
 	DataDir:        os.TempDir(),
 	DataSize:       256 * 1024 * 1024,
 	SyncData:       false,
-	IndexType:      ART,
+	IndexType:      BTree,
 	QuickStart:     true,
 	SyncThreshold:  1024,
 	MergeThreshold: 0.5,

@@ -1,8 +1,8 @@
 package index
 
 import (
+	"bamboo/content"
 	"bytes"
-	"tiny-bitcask/content"
 
 	"github.com/google/btree"
 )

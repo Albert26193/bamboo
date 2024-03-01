@@ -1,8 +1,8 @@
 package index
 
 import (
+	"bamboo/content"
 	"testing"
-	"tiny-bitcask/content"
 
 	"github.com/stretchr/testify/assert"
 )

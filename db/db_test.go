@@ -1,13 +1,13 @@
 package db
 
 import (
+	"bamboo/db/utils"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-	"tiny-bitcask/db/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ import (
 func TestOpen(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-open-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-open-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -27,7 +27,7 @@ func TestOpen(t *testing.T) {
 func TestPut(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-put-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-put-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	opts.DataSize = 64 * 1024 * 1024
@@ -88,7 +88,7 @@ func TestPut(t *testing.T) {
 func TestGet(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-get-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-get-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	opts.DataSize = 64 * 1024 * 1024
@@ -169,7 +169,7 @@ func TestGet(t *testing.T) {
 func TestDelete(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-delete-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-delete-", strconv.FormatInt(currentTime, 10)}, ""))
 	opts.DataDir = dir
 	opts.DataSize = 64 * 1024 * 1024
 
@@ -233,7 +233,7 @@ func TestDelete(t *testing.T) {
 func TestDBListKeys(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-listkeys-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-listkeys-", strconv.FormatInt(currentTime, 10)}, ""))
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -268,7 +268,7 @@ func TestDBListKeys(t *testing.T) {
 func TestFold(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-fold-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-fold-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -296,7 +296,7 @@ func TestFold(t *testing.T) {
 func TestClose(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-close-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-close-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -311,7 +311,7 @@ func TestClose(t *testing.T) {
 func TestSync(t *testing.T) {
 	opts := DefaultOptions
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-sync-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-sync-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -330,7 +330,7 @@ func TestDB_FileLock(t *testing.T) {
 	opts := DefaultOptions
 
 	currentTime := time.Now().Unix()
-	dir, _ := os.MkdirTemp("", strings.Join([]string{"bitcask-lock-", strconv.FormatInt(currentTime, 10)}, ""))
+	dir, _ := os.MkdirTemp("", strings.Join([]string{"bamboo-lock-", strconv.FormatInt(currentTime, 10)}, ""))
 
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
@@ -353,7 +353,7 @@ func TestDB_FileLock(t *testing.T) {
 
 func TestStatus(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-go-stat")
+	dir, _ := os.MkdirTemp("", "bamboo-go-stat")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -379,7 +379,7 @@ func TestStatus(t *testing.T) {
 
 func TestBackup(t *testing.T) {
 	opts := DefaultOptions
-	dir, _ := os.MkdirTemp("", "bitcask-backup")
+	dir, _ := os.MkdirTemp("", "bamboo-backup")
 	opts.DataDir = dir
 	db, err := CreateDB(opts)
 	defer destroyDB(db)
@@ -399,7 +399,7 @@ func TestBackup(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	backupDir, _ := os.MkdirTemp("", "bitcask-backup")
+	backupDir, _ := os.MkdirTemp("", "bamboo-backup")
 	err = db.Backup(backupDir)
 	assert.Nil(t, err)
 }

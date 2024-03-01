@@ -1,19 +1,19 @@
 package main
 
 import (
+	bamboo "bamboo/db"
 	"fmt"
-	bitcask "tiny-bitcask/db"
 )
 
 func main() {
-	opts := bitcask.DefaultOptions
-	opts.DataDir = "/tmp/tiny-bitcask-demo"
-	db, err := bitcask.CreateDB(opts)
+	opts := bamboo.DefaultOptions
+	opts.DataDir = "/tmp/bamboo-demo"
+	db, err := bamboo.CreateDB(opts)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Put([]byte("name"), []byte("bitcask"))
+	err = db.Put([]byte("name"), []byte("bamboo"))
 	if err != nil {
 		panic(err)
 	}
