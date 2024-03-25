@@ -5,9 +5,12 @@ import (
 	"time"
 )
 
-// key --> | type | expire | payload |
-//
-//	-->  | 1byte | ?byte | ?byte  |
+/*
+key to:
++----------------+-----------------+---------------+
+|  data type(1)  |   expire(1-10) |  payload(1-?)  |
++----------------+-----------------+---------------+
+*/
 func (r *RedisStructure) Set(key []byte, actualValue []byte, ttl time.Duration) error {
 	if len(key) == 0 || len(actualValue) == 0 {
 		return nil
@@ -38,8 +41,13 @@ func (r *RedisStructure) Set(key []byte, actualValue []byte, ttl time.Duration) 
 	return r.dataBase.Put(key, wrappedValue)
 }
 
-// key --> | type | expire | payload |
-// get = db.get +  decode operation
+/*
+key to:
++----------------+-----------------+---------------+
+|  data type(1)  |   expire(1-10) |  payload(1-?)  |
++----------------+-----------------+---------------+
+get = db.get +  decode operation
+*/
 func (r *RedisStructure) Get(key []byte) ([]byte, error) {
 	wrappedValue, err := r.dataBase.Get(key)
 	if err != nil {

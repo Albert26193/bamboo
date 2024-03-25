@@ -37,3 +37,7 @@ func (r *RedisStructure) Type(key []byte) (redisStructType, error) {
 	// first byte is the type
 	return wrappedValue[0], nil
 }
+
+func (r *RedisStructure) Close() error {
+	return r.dataBase.Close()
+}

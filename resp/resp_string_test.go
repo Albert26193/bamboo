@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRedisGet(t *testing.T) {
+func TestRespGet(t *testing.T) {
 	opts := db.DefaultOptions
 	dir, _ := os.MkdirTemp("/tmp", "resp-test")
 	opts.DataDir = dir
@@ -34,7 +34,7 @@ func TestRedisGet(t *testing.T) {
 	assert.Equal(t, db.ErrKeyNotFound, err)
 }
 
-func TestRedisDelAndType(t *testing.T) {
+func TestRespDel(t *testing.T) {
 	opts := db.DefaultOptions
 	dir, _ := os.MkdirTemp("/tmp", "resp-del-type")
 	opts.DataDir = dir

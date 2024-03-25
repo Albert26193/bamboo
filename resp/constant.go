@@ -11,8 +11,8 @@ type redisStructType = byte
 
 const (
 	RedisString redisStructType = 0
-	RedisHash   redisStructType = 0
-	RedisSet    redisStructType = 0
-	RedisList   redisStructType = 0
-	RedisZset   redisStructType = 0
+	RedisHash   redisStructType = 1
+	RedisSet    redisStructType = 2
+	RedisList   redisStructType = 3
+	RedisZset   redisStructType = 4
 )

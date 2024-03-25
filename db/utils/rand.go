@@ -24,3 +24,12 @@ func RandomValue(n int) []byte {
 	}
 	return []byte("bamboo-value-" + string(b))
 }
+
+// RandomValue get random value
+func ConcurrencyRandomValue(n int) []byte {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return []byte("bamboo-value-" + string(b))
+}
